@@ -13,3 +13,6 @@ lib64
 
 .idea
 *~
+
+*.pyc
+*.pyo
