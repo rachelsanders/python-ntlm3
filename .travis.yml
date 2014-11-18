@@ -13,9 +13,14 @@ matrix:
 
 # command to install dependencies
 install:
-  - python python26/setup.py install
+  - python setup.py install
   - pip install -r requirements-dev.txt
+  - pip install python-coveralls
 
 # command to run tests
-script:  python python26/setup.py test
+script:
+  - py.test --cov ntlm --cov-report term-missing tests
+
+after_success:
+  - coveralls
 
