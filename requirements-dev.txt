@@ -1,1 +1,2 @@
-# nothing here yet - todo
+pytest
+pytest-cov
