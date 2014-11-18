@@ -19,7 +19,7 @@ install:
 
 # command to run tests
 script:
-  - py.test --cov ntlm --cov-report term-missing tests
+  - py.test --cov ntlm --cov-report term-missing test
 
 after_success:
   - coveralls
