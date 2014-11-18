@@ -5,7 +5,7 @@ ENTRY_POINTS = { "console_scripts":[ "ntlm_example_simple=ntlm_examples.simple:m
                                      "ntlm_example_extended=ntlm_examples.extended:main",] }
 
 setup(name='python-ntlm',
-      version='1.1.0',
+      version='2.0-dev',
       description='Python library that provides NTLM support, including an authentication handler for urllib2. '
                   'Works with pass-the-hash in additon to password authentication.',
       long_description="""
