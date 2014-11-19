@@ -1,8 +1,8 @@
 from setuptools import setup
 
 
-ENTRY_POINTS = { "console_scripts":[ "ntlm_example_simple=ntlm_examples.simple:main",
-                                     "ntlm_example_extended=ntlm_examples.extended:main",] }
+ENTRY_POINTS = {"console_scripts": ["ntlm_example_simple=ntlm_examples.simple:main",
+                "ntlm_example_extended=ntlm_examples.extended:main"]}
 
 setup(name='python-ntlm',
       version='2.0-dev',
@@ -11,13 +11,13 @@ setup(name='python-ntlm',
       long_description="""
       This package allows Python clients running on any operating
       system to provide NTLM authentication to a supporting server.
-      
+
       python-ntlm is probably most useful on platforms that are not
       Windows, since on Windows it is possible to take advantage of
       platform-specific NTLM support.
 
       This is also useful for passing hashes to servers requiring
-      ntlm authentication in instances where using windows tools is 
+      ntlm authentication in instances where using windows tools is
       not desirable.""",
       author='Matthijs Mullender',
       author_email='info@zopyx.org',
@@ -26,7 +26,7 @@ setup(name='python-ntlm',
       url="http://code.google.com/p/python-ntlm",
       packages=["ntlm"],
       zip_safe=False,
-      entry_points = ENTRY_POINTS,
+      entry_points=ENTRY_POINTS,
       license="GNU Lesser GPL",
       # See https://pypi.python.org/pypi?%3Aaction=list_classifiers
       classifiers=[
