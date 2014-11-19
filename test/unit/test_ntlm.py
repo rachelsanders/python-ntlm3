@@ -31,10 +31,12 @@ class Test_HashingPasswords(unittest.TestCase):
 class Test_HashedPasswordResponse(unittest.TestCase):
 
     def test_response_to_LM_hashed_password(self):
-        assert HexToByte("98 de f7 b8 7f 88 aa 5d af e2 df 77 96 88 a1 72 de f1 1c 7d 5c cd ef 13") == calc_resp(create_LM_hashed_password_v1(Password), ServerChallenge)
+        assert HexToByte("98 de f7 b8 7f 88 aa 5d af e2 df 77 96 88 a1 72 de f1 1c 7d 5c cd ef 13") == \
+            calc_resp(create_LM_hashed_password_v1(Password), ServerChallenge)
 
     def test_response_to_NT_hashed_password(self):
-        assert HexToByte("67 c4 30 11 f3 02 98 a2 ad 35 ec e6 4f 16 33 1c 44 bd be d9 27 84 1f 94") == calc_resp(create_NT_hashed_password_v1(Password), ServerChallenge)
+        assert HexToByte("67 c4 30 11 f3 02 98 a2 ad 35 ec e6 4f 16 33 1c 44 bd be d9 27 84 1f 94") == \
+            calc_resp(create_NT_hashed_password_v1(Password), ServerChallenge)
 
     def test_response_to_NTLM_v1(self):
         # [MS-NLMP] page 75
@@ -58,7 +60,8 @@ class Test_HashedPasswordResponse(unittest.TestCase):
         (NTLMv2Response, LMv2Response) = ComputeResponse(ResponseKeyNT, ResponseKeyLM, ServerChallenge, ServerName, ClientChallenge, Time)
 
         # expected failure
-        # According to the spec in section '3.3.2 NTLM v2 Authentication' the NTLMv2Response should be longer than the value given on page 77 (this suggests a mistake in the spec)
+        # According to the spec in section '3.3.2 NTLM v2 Authentication' the NTLMv2Response
+        # should be longer than the value given on page 77 (this suggests a mistake in the spec)
         # [MS-NLMP] page 77
-        assert HexToByte("68 cd 0a b8 51 e5 1c 96 aa bc 92 7b eb ef 6a 1c") == NTLMv2Response, "\nExpected: 68 cd 0a b8 51 e5 1c 96 aa bc 92 7b eb ef 6a 1c\nActual:   %s" % ByteToHex(NTLMv2Response)
-
+        assert HexToByte("68 cd 0a b8 51 e5 1c 96 aa bc 92 7b eb ef 6a 1c") == \
+            NTLMv2Response, "\nExpected: 68 cd 0a b8 51 e5 1c 96 aa bc 92 7b eb ef 6a 1c\nActual:   %s" % ByteToHex(NTLMv2Response)
