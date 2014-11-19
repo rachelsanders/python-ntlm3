@@ -6,8 +6,8 @@ from ntlm.ntlm import create_LM_hashed_password_v1, create_NT_hashed_password_v1
     create_NTLM_NEGOTIATE_MESSAGE, ComputeResponse
 
 
-from .fixtures import *
-from .utils import *
+from ..fixtures import *  # noqa
+from ..utils import HexToByte, ByteToHex
 
 
 class Test_HashingPasswords(unittest.TestCase):
