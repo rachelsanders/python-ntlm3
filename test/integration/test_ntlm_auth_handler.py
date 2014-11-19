@@ -24,7 +24,6 @@ class Test_NTLMAuthHandler_Issues(unittest.TestCase):
 
         """
 
-
         HTTPretty.register_uri(
             HTTPretty.GET, FAKE_URL,
             responses=[
