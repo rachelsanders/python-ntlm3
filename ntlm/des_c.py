@@ -30,38 +30,6 @@ def c2l(c):
     return l
 
 
-def c2ln(c, l1, l2, n):
-    "char[n] to two unsigned long???"
-    c = c + n
-    l1, l2 = U32(0), U32(0)
-
-    f = 0
-    if n == 8:
-        l2 = l2 | (U32(c[7]) << 24)
-        f = 1
-    if f or (n == 7):
-        l2 = l2 | (U32(c[6]) << 16)
-        f = 1
-    if f or (n == 6):
-        l2 = l2 | (U32(c[5]) << 8)
-        f = 1
-    if f or (n == 5):
-        l2 = l2 | U32(c[4])
-        f = 1
-    if f or (n == 4):
-        l1 = l1 | (U32(c[3]) << 24)
-        f = 1
-    if f or (n == 3):
-        l1 = l1 | (U32(c[2]) << 16)
-        f = 1
-    if f or (n == 2):
-        l1 = l1 | (U32(c[1]) << 8)
-        f = 1
-    if f or (n == 1):
-        l1 = l1 | U32(c[0])
-    return (l1, l2)
-
-
 def l2c(l):
     "unsigned long to char[4]"
     c = []
@@ -70,57 +38,6 @@ def l2c(l):
     c.append(int((l >> 16) & U32(0xFF)))
     c.append(int((l >> 24) & U32(0xFF)))
     return c
-
-
-def n2l(c, l):
-    "network to host long"
-    l = U32(c[0] << 24)
-    l = l | (U32(c[1]) << 16)
-    l = l | (U32(c[2]) << 8)
-    l = l | (U32(c[3]))
-    return l
-
-
-def l2n(l, c):
-    "host to network long"
-    c = []
-    c.append(int((l >> 24) & U32(0xFF)))
-    c.append(int((l >> 16) & U32(0xFF)))
-    c.append(int((l >> 8) & U32(0xFF)))
-    c.append(int((l) & U32(0xFF)))
-    return c
-
-
-def l2cn(l1, l2, c, n):
-    ""
-    for i in range(n):
-        c.append(0x00)
-    f = 0
-    if f or (n == 8):
-        c[7] = int((l2 >> 24) & U32(0xFF))
-        f = 1
-    if f or (n == 7):
-        c[6] = int((l2 >> 16) & U32(0xFF))
-        f = 1
-    if f or (n == 6):
-        c[5] = int((l2 >> 8) & U32(0xFF))
-        f = 1
-    if f or (n == 5):
-        c[4] = int((l2) & U32(0xFF))
-        f = 1
-    if f or (n == 4):
-        c[3] = int((l1 >> 24) & U32(0xFF))
-        f = 1
-    if f or (n == 3):
-        c[2] = int((l1 >> 16) & U32(0xFF))
-        f = 1
-    if f or (n == 2):
-        c[1] = int((l1 >> 8) & U32(0xFF))
-        f = 1
-    if f or (n == 1):
-        c[0] = int((l1) & U32(0xFF))
-        f = 1
-    return c[:n]
 
 # array of data
 # static unsigned long des_SPtrans[8][64]={
