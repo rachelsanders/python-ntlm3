@@ -1,7 +1,7 @@
 import unittest
-import pytest
 
 from ntlm.des import DES
+
 
 class Test_Encryption(unittest.TestCase):
 
