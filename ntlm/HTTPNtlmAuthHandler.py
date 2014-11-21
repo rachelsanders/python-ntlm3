@@ -21,14 +21,7 @@ import re
 
 class AbstractNtlmAuthHandler:
     def __init__(self, password_mgr=None, debuglevel=0):
-        """Initialize an instance of a AbstractNtlmAuthHandler.
 
-Verify operation with all default arguments.
->>> abstrct = AbstractNtlmAuthHandler()
-
-Verify "normal" operation.
->>> abstrct = AbstractNtlmAuthHandler(urllib2.HTTPPasswordMgrWithDefaultRealm())
-"""
         if password_mgr is None:
             password_mgr = urllib2.HTTPPasswordMgr()
         self.passwd = password_mgr
@@ -135,31 +128,3 @@ class ProxyNtlmAuthHandler(AbstractNtlmAuthHandler, urllib2.BaseHandler):
     def http_error_407(self, req, fp, code, msg, headers):
         return self.http_error_authentication_required('proxy-authenticate', req, fp, headers)
 
-
-if __name__ == "__main__":
-    import doctest
-
-    doctest.testmod()
-
-""" TODO: Move this to the ntlm examples directory.
-##if __name__ == "__main__":
-##    url = "http://ntlmprotectedserver/securedfile.html"
-##    user = u'DOMAIN\\User'
-##    password = 'Password'
-##
-##    passman = urllib2.HTTPPasswordMgrWithDefaultRealm()
-##    passman.add_password(None, url, user , password)
-##    auth_basic = urllib2.HTTPBasicAuthHandler(passman)
-##    auth_digest = urllib2.HTTPDigestAuthHandler(passman)
-##    auth_NTLM = HTTPNtlmAuthHandler(passman)
-##
-##    # disable proxies (just for testing)
-##    proxy_handler = urllib2.ProxyHandler({})
-##
-##    opener = urllib2.build_opener(proxy_handler, auth_NTLM) #, auth_digest, auth_basic)
-##
-##    urllib2.install_opener(opener)
-##
-##    response = urllib2.urlopen(url)
-##    print(response.read())
-"""
