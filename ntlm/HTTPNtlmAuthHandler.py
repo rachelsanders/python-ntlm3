@@ -11,19 +11,19 @@
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library.  If not, see <http://www.gnu.org/licenses/> or <http://www.gnu.org/licenses/lgpl.txt>.
 
-import urllib2
-import httplib
+from six.moves import urllib
+from six.moves.http_client import HTTPConnection, HTTPSConnection
+
 import socket
-from urllib import addinfourl
-import ntlm
 import re
 
+from . import ntlm
 
 class AbstractNtlmAuthHandler:
     def __init__(self, password_mgr=None, debuglevel=0):
 
         if password_mgr is None:
-            password_mgr = urllib2.HTTPPasswordMgr()
+            password_mgr = urllib.request.HTTPPasswordMgr()
         self.passwd = password_mgr
         self.add_password = self.passwd.add_password
         self._debuglevel = debuglevel
@@ -60,12 +60,12 @@ class AbstractNtlmAuthHandler:
 
             host = req.get_host()
             if not host:
-                raise urllib2.URLError('no host given')
+                raise urllib.request.URLError('no host given')
             h = None
             if req.get_full_url().startswith('https://'):
-                h = httplib.HTTPSConnection(host)  # will parse host:port
+                h = HTTPSConnection(host)  # will parse host:port
             else:
-                h = httplib.HTTPConnection(host)  # will parse host:port
+                h = HTTPConnection(host)  # will parse host:port
             h.set_debuglevel(self._debuglevel)
             # we must keep the connection because NTLM authenticates the connection, not single requests
             headers["Connection"] = "Keep-Alive"
@@ -101,24 +101,24 @@ class AbstractNtlmAuthHandler:
                     raise NotImplementedError
 
                 response.readline = notimplemented
-                infourl = addinfourl(response, response.msg, req.get_full_url())
+                infourl = urllib.response.addinfourl(response, response.msg, req.get_full_url())
                 infourl.code = response.status
                 infourl.msg = response.reason
                 return infourl
-            except socket.error, err:
-                raise urllib2.URLError(err)
+            except socket.error as err:
+                raise urllib.URLError(err)
         else:
             return None
 
 
-class HTTPNtlmAuthHandler(AbstractNtlmAuthHandler, urllib2.BaseHandler):
+class HTTPNtlmAuthHandler(AbstractNtlmAuthHandler, urllib.request.BaseHandler):
     auth_header = 'Authorization'
 
     def http_error_401(self, req, fp, code, msg, headers):
         return self.http_error_authentication_required('www-authenticate', req, fp, headers)
 
 
-class ProxyNtlmAuthHandler(AbstractNtlmAuthHandler, urllib2.BaseHandler):
+class ProxyNtlmAuthHandler(AbstractNtlmAuthHandler, urllib.request.BaseHandler):
     """
         CAUTION: this class has NOT been tested at all!!!
         use at your own risk

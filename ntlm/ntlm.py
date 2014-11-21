@@ -14,13 +14,14 @@
 import struct
 import base64
 import string
-import des
 import hashlib
 import hmac
 import random
 import re
 import binascii
 from socket import gethostname
+
+from . import des
 
 NTLM_NegotiateUnicode = 0x00000001
 NTLM_NegotiateOEM = 0x00000002
@@ -369,14 +370,14 @@ def ntlm2sr_calc_resp(ResponseKeyNT, ServerChallenge, ClientChallenge='\xaa' * 8
 
 
 def create_LM_hashed_password_v1(passwd):
-    "setup LanManager password"
-    "create LanManager hashed password"
+    """create LanManager hashed password"""
+
     # if the passwd provided is already a hash, we just return the first half
     if re.match(r'^[\w]{32}:[\w]{32}$', passwd):
         return binascii.unhexlify(passwd.split(':')[0])
 
     # fix the password length to 14 bytes
-    passwd = string.upper(passwd)
+    passwd = passwd.upper()
     lm_pw = passwd + '\0' * (14 - len(passwd))
     lm_pw = passwd[0:14]
 

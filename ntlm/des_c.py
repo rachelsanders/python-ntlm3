@@ -14,11 +14,8 @@
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library.  If not, see <http://www.gnu.org/licenses/> or <http://www.gnu.org/licenses/lgpl.txt>.
 
-from U32 import U32
-
-# --NON ASCII COMMENT ELIDED--
-# typedef unsigned char des_cblock[8];
-# define HDRSIZE 4
+from .U32 import U32
+from .des_data import des_SPtrans, des_skb
 
 
 def c2l(c):
@@ -38,11 +35,6 @@ def l2c(l):
     c.append(int((l >> 16) & U32(0xFF)))
     c.append(int((l >> 24) & U32(0xFF)))
     return c
-
-# array of data
-# static unsigned long des_SPtrans[8][64]={
-# static unsigned long des_skb[8][64]={
-from des_data import des_SPtrans, des_skb
 
 
 def D_ENCRYPT(tup, u, t, s):
@@ -133,11 +125,11 @@ def des_encript(input, ks, encrypt):
     t = U32(0)
     u = U32(0)
 
-    r, l, t = PERM_OP((r, l, t), 4, U32(0x0f0f0f0fL))
-    l, r, t = PERM_OP((l, r, t), 16, U32(0x0000ffffL))
-    r, l, t = PERM_OP((r, l, t), 2, U32(0x33333333L))
-    l, r, t = PERM_OP((l, r, t), 8, U32(0x00ff00ffL))
-    r, l, t = PERM_OP((r, l, t), 1, U32(0x55555555L))
+    r, l, t = PERM_OP((r, l, t), 4, U32(0x0f0f0f0f))
+    l, r, t = PERM_OP((l, r, t), 16, U32(0x0000ffff))
+    r, l, t = PERM_OP((r, l, t), 2, U32(0x33333333))
+    l, r, t = PERM_OP((l, r, t), 8, U32(0x00ff00ff))
+    r, l, t = PERM_OP((r, l, t), 1, U32(0x55555555))
 
     t = (r << 1) | (r >> 31)
     r = (l << 1) | (l >> 31)
@@ -165,11 +157,11 @@ def des_encript(input, ks, encrypt):
     l = (l >> 1) | (l << 31)
     r = (r >> 1) | (r << 31)
 
-    r, l, t = PERM_OP((r, l, t), 1, U32(0x55555555L))
-    l, r, t = PERM_OP((l, r, t), 8, U32(0x00ff00ffL))
-    r, l, t = PERM_OP((r, l, t), 2, U32(0x33333333L))
-    l, r, t = PERM_OP((l, r, t), 16, U32(0x0000ffffL))
-    r, l, t = PERM_OP((r, l, t), 4, U32(0x0f0f0f0fL))
+    r, l, t = PERM_OP((r, l, t), 1, U32(0x55555555))
+    l, r, t = PERM_OP((l, r, t), 8, U32(0x00ff00ff))
+    r, l, t = PERM_OP((r, l, t), 2, U32(0x33333333))
+    l, r, t = PERM_OP((l, r, t), 16, U32(0x0000ffff))
+    r, l, t = PERM_OP((r, l, t), 4, U32(0x0f0f0f0f))
 
     output = [l]
     output.append(r)
@@ -217,16 +209,16 @@ def des_set_key(key):
     d = c2l(key[4:8])
     t = U32(0)
 
-    d, c, t = PERM_OP((d, c, t), 4, U32(0x0f0f0f0fL))
-    c, t = HPERM_OP((c, t), -2, U32(0xcccc0000L))
-    d, t = HPERM_OP((d, t), -2, U32(0xcccc0000L))
-    d, c, t = PERM_OP((d, c, t), 1, U32(0x55555555L))
-    c, d, t = PERM_OP((c, d, t), 8, U32(0x00ff00ffL))
-    d, c, t = PERM_OP((d, c, t), 1, U32(0x55555555L))
+    d, c, t = PERM_OP((d, c, t), 4, U32(0x0f0f0f0f))
+    c, t = HPERM_OP((c, t), -2, U32(0xcccc0000))
+    d, t = HPERM_OP((d, t), -2, U32(0xcccc0000))
+    d, c, t = PERM_OP((d, c, t), 1, U32(0x55555555))
+    c, d, t = PERM_OP((c, d, t), 8, U32(0x00ff00ff))
+    d, c, t = PERM_OP((d, c, t), 1, U32(0x55555555))
 
-    d = (((d & U32(0x000000ffL)) << 16) | (d & U32(0x0000ff00L)) | ((d & U32(0x00ff0000L)) >> 16) | (
-        (c & U32(0xf0000000L)) >> 4))
-    c = c & U32(0x0fffffffL)
+    d = (((d & U32(0x000000ff)) << 16) | (d & U32(0x0000ff00)) | ((d & U32(0x00ff0000)) >> 16) | (
+        (c & U32(0xf0000000)) >> 4))
+    c = c & U32(0x0fffffff)
 
     for i in range(16):
         if (shifts2[i]):
@@ -235,8 +227,8 @@ def des_set_key(key):
         else:
             c = ((c >> 1) | (c << 27))
             d = ((d >> 1) | (d << 27))
-        c = c & U32(0x0fffffffL)
-        d = d & U32(0x0fffffffL)
+        c = c & U32(0x0fffffff)
+        d = d & U32(0x0fffffff)
 
         s = des_skb[0][int((c) & U32(0x3f))] | \
             des_skb[1][int(((c >> 6) & U32(0x03)) | ((c >> 7) & U32(0x3c)))] | \
@@ -249,10 +241,10 @@ def des_set_key(key):
             des_skb[7][int(((d >> 21) & U32(0x0f)) | ((d >> 22) & U32(0x30)))]
         # print s, t
 
-        k.append(((t << 16) | (s & U32(0x0000ffffL))) & U32(0xffffffffL))
-        s = ((s >> 16) | (t & U32(0xffff0000L)))
+        k.append(((t << 16) | (s & U32(0x0000ffff))) & U32(0xffffffff))
+        s = ((s >> 16) | (t & U32(0xffff0000)))
         s = (s << 4) | (s >> 28)
-        k.append(s & U32(0xffffffffL))
+        k.append(s & U32(0xffffffff))
 
     schedule = k
 

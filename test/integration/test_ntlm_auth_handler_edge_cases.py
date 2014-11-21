@@ -1,14 +1,13 @@
 import unittest
 import pytest
 from httpretty import HTTPretty, httprettified, Response
-import urllib2
-
 
 from ntlm import HTTPNtlmAuthHandler
 
 from ..fixtures import *  # noqa
 from ..utils import MockRawServerResponse
 
+from six.moves import urllib
 
 class Test_NTLMAuthHandler_Issues(unittest.TestCase):
 
@@ -36,11 +35,11 @@ class Test_NTLMAuthHandler_Issues(unittest.TestCase):
             ]
         )
 
-        passman = urllib2.HTTPPasswordMgrWithDefaultRealm()
+        passman = urllib.request.HTTPPasswordMgrWithDefaultRealm()
         passman.add_password(None, FAKE_URL, FAKE_USER, FAKE_PASSWORD)
 
         auth_NTLM = HTTPNtlmAuthHandler.HTTPNtlmAuthHandler(passman, debuglevel=0)
-        opener = urllib2.build_opener(auth_NTLM)
+        opener = urllib.request.build_opener(auth_NTLM)
 
         f = opener.open(FAKE_URL)
 
@@ -66,11 +65,11 @@ class Test_NTLMAuthHandler_Issues(unittest.TestCase):
                 ]
         )
 
-        passman = urllib2.HTTPPasswordMgrWithDefaultRealm()
+        passman = urllib.request.HTTPPasswordMgrWithDefaultRealm()
         passman.add_password(None, FAKE_URL, FAKE_USER, FAKE_PASSWORD)
 
         auth_NTLM = HTTPNtlmAuthHandler.HTTPNtlmAuthHandler(passman, debuglevel=0)
-        opener = urllib2.build_opener(auth_NTLM)
+        opener = urllib.request.build_opener(auth_NTLM)
 
         f = opener.open(FAKE_URL)
 
@@ -91,11 +90,11 @@ class Test_NTLMAuthHandler_Issues(unittest.TestCase):
 
 
 
-    passman = urllib2.HTTPPasswordMgrWithDefaultRealm()
+    passman = urllib.request.HTTPPasswordMgrWithDefaultRealm()
     passman.add_password(None, FAKE_URL, FAKE_USER, FAKE_PASSWORD)
 
     auth_NTLM = HTTPNtlmAuthHandler.HTTPNtlmAuthHandler(passman, debuglevel=0)
-    opener = urllib2.build_opener(auth_NTLM)
+    opener = urllib.request.build_opener(auth_NTLM)
 
-    with pytest.raises(urllib2.URLError):
+    with pytest.raises(urllib.error.URLError):
         f = opener.open(FAKE_URL, timeout=0)

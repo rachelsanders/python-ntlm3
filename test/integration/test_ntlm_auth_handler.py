@@ -56,7 +56,8 @@ class Test_NTLMAuthHandler(unittest.TestCase):
                 return (200, headers, SUCCESSFUL_CONNECTION_BODY)
 
             for key in request.headers:
-                print "%s: %s" % (key, request.headers[key])
+                print("{0}: {1}".format(key, request.headers[key]))
+
             raise AssertionError("The client sent something we didn't expect.")
 
         HTTPretty.register_uri(
@@ -67,7 +68,7 @@ class Test_NTLMAuthHandler(unittest.TestCase):
         passman.add_password(None, FAKE_URL, FAKE_USER, FAKE_PASSWORD)
 
         auth_NTLM = HTTPNtlmAuthHandler.HTTPNtlmAuthHandler(passman, debuglevel=0)
-        opener = urllib.build_opener(auth_NTLM)
+        opener = urllib.request.build_opener(auth_NTLM)
 
         f = opener.open(FAKE_URL)
         assert f.read() == SUCCESSFUL_CONNECTION_BODY
@@ -114,6 +115,7 @@ class Test_NTLMAuthHandler(unittest.TestCase):
 
             for key in request.headers:
                 print("{0}: {1}".format(key, request.headers[key]))
+
             raise AssertionError("The client sent something we didn't expect.")
 
         HTTPretty.register_uri(
