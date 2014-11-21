@@ -20,6 +20,9 @@ class Test_U32(unittest.TestCase):
         n.set(100)
         assert U32(100).__repr__() == '0x64'
 
+    def test_eq_values_are_eq(self):
+        assert U32(100) == U32(100)
+
     def test_can_cast_to_long(self):
         assert _long(U32(100)) == 100
 

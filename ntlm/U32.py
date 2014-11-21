@@ -14,6 +14,7 @@
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library.  If not, see <http://www.gnu.org/licenses/> or <http://www.gnu.org/licenses/lgpl.txt>.
 
+from __future__ import division
 
 C = 0x1000000000
 
@@ -62,6 +63,11 @@ class U32:
         return r
 
     def __div__(self, b):
+        r = U32()
+        r.v = C + (norm(self.v) // norm(b.v))
+        return r
+
+    def __truediv__(self, b):
         r = U32()
         r.v = C + (norm(self.v) / norm(b.v))
         return r
@@ -123,6 +129,24 @@ class U32:
             return -1
         else:
             return 0
+
+    def __lt__(self, other):
+        return self.v < other.v
+
+    def __gt__(self, other):
+        return self.v > other.v
+
+    def __eq__(self, other):
+        return self.v == other.v
+
+    def __le__(self, other):
+        return self.v <= other.v
+
+    def __ge__(self, other):
+        return self.v >= other.v
+
+    def __ne__(self, other):
+        return self.v != other.v
 
     def __nonzero__(self):
         return norm(self.v)
