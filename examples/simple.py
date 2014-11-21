@@ -39,34 +39,3 @@ def process(password, url):
     response = urllib2.urlopen(url)
     print(response.read())
 
-# The following is adapted from Guido van van Rossum's suggestion.
-# http://www.artima.com/weblogs/viewpost.jsp?thread=4829
-
-class Usage(Exception):
-    def __init__(self, msg):
-        self.msg = msg
-
-import sys
-import getopt
-
-def main(argv=None):
-    if argv is None:
-        argv = sys.argv
-    try:
-        try:
-            opts, args = getopt.getopt(argv[1:], "h", ["help"])
-        except getopt.error, msg:
-             raise Usage(msg)
-        if opts:
-            raise Usage(__doc__)
-        if len(args) != 2:
-            raise Usage('need exactly 2 arguments (%d given)' % len(args))
-        process(*args)
-    except Usage, err:
-        print >>sys.stderr, err.msg
-        if err.msg is not __doc__:
-            print >>sys.stderr, "for help use --help"
-        return 2
-
-if __name__ == "__main__":
-    sys.exit(main())
