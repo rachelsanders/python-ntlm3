@@ -25,6 +25,11 @@ setup(name='python-ntlm',
       zip_safe=False,
       license="GNU Lesser GPL",
       # See https://pypi.python.org/pypi?%3Aaction=list_classifiers
+
+      install_requires=[
+          "six"
+      ],
+
       classifiers=[
           "License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)"
           # Specify the Python versions you support here. In particular, ensure

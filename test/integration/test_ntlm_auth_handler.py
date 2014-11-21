@@ -1,5 +1,6 @@
 import unittest
-import urllib2
+
+from six.moves import urllib
 
 from httpretty import HTTPretty, httprettified
 
@@ -62,11 +63,11 @@ class Test_NTLMAuthHandler(unittest.TestCase):
             HTTPretty.GET, FAKE_URL,
             body=request_callback)
 
-        passman = urllib2.HTTPPasswordMgrWithDefaultRealm()
+        passman = urllib.request.HTTPPasswordMgrWithDefaultRealm()
         passman.add_password(None, FAKE_URL, FAKE_USER, FAKE_PASSWORD)
 
         auth_NTLM = HTTPNtlmAuthHandler.HTTPNtlmAuthHandler(passman, debuglevel=0)
-        opener = urllib2.build_opener(auth_NTLM)
+        opener = urllib.build_opener(auth_NTLM)
 
         f = opener.open(FAKE_URL)
         assert f.read() == SUCCESSFUL_CONNECTION_BODY
@@ -112,18 +113,18 @@ class Test_NTLMAuthHandler(unittest.TestCase):
                 return (200, headers, SUCCESSFUL_CONNECTION_BODY)
 
             for key in request.headers:
-                print "%s: %s" % (key, request.headers[key])
+                print("{0}: {1}".format(key, request.headers[key]))
             raise AssertionError("The client sent something we didn't expect.")
 
         HTTPretty.register_uri(
             HTTPretty.GET, FAKE_URL,
             body=request_callback)
 
-        passman = urllib2.HTTPPasswordMgrWithDefaultRealm()
+        passman = urllib.request.HTTPPasswordMgrWithDefaultRealm()
         passman.add_password(None, FAKE_URL, FAKE_USER, FAKE_PASSWORD)
 
         auth_NTLM = HTTPNtlmAuthHandler.HTTPNtlmAuthHandler(passman, debuglevel=0)
-        opener = urllib2.build_opener(auth_NTLM)
+        opener = urllib.request.build_opener(auth_NTLM)
 
         f = opener.open(FAKE_URL)
 
