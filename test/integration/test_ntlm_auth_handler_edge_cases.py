@@ -1,4 +1,5 @@
 import unittest
+import pytest
 from httpretty import HTTPretty, httprettified, Response
 import urllib2
 
@@ -76,3 +77,25 @@ class Test_NTLMAuthHandler_Issues(unittest.TestCase):
         response = f.read()
 
         assert response == SUCCESSFUL_CONNECTION_BODY
+
+    @httprettified
+    def test_that_if_ntlm_is_not_in_the_header_we_do_shitty_behavior(self):
+        """ This test is here to remind me ff NTLM isn't in the header
+        we basically hang forever :/ """
+        HTTPretty.register_uri(
+            HTTPretty.GET, FAKE_URL,
+            responses=[
+                Response(status=401, body="", forcing_headers=BASIC_AUTH_HEADERS),
+                ]
+        )
+
+
+
+    passman = urllib2.HTTPPasswordMgrWithDefaultRealm()
+    passman.add_password(None, FAKE_URL, FAKE_USER, FAKE_PASSWORD)
+
+    auth_NTLM = HTTPNtlmAuthHandler.HTTPNtlmAuthHandler(passman, debuglevel=0)
+    opener = urllib2.build_opener(auth_NTLM)
+
+    with pytest.raises(urllib2.URLError):
+        f = opener.open(FAKE_URL, timeout=0)
