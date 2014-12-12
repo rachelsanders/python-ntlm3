@@ -142,9 +142,9 @@ def create_NTLM_NEGOTIATE_MESSAGE(user, type1_flags=NTLM_TYPE1_FLAGS):
     type = struct.pack('<I', 1)  # type 1
 
     flags = struct.pack('<I', type1_flags)
-    Workstation = bytes(gethostname().upper(), 'ascii')
+    Workstation = gethostname().upper().encode('ascii')
     user_parts = user.split('\\', 1)
-    DomainName = bytes(user_parts[0].upper(), 'ascii')
+    DomainName = user_parts[0].upper().encode('ascii')
 
     # TODO - this variable isn't used
     EncryptedRandomSessionKey = ""  # noqa
@@ -180,7 +180,7 @@ def create_NTLM_NEGOTIATE_MESSAGE(user, type1_flags=NTLM_TYPE1_FLAGS):
 
 def parse_NTLM_CHALLENGE_MESSAGE(msg2):
     ""
-    msg2 = base64.decodebytes(bytes(msg2, 'ascii'))
+    msg2 = base64.b64decode(msg2)
 
     # TODO - this variable isn't used
     Signature = msg2[0:8]  # noqa
@@ -235,15 +235,15 @@ def create_NTLM_AUTHENTICATE_MESSAGE(nonce, user, domain, password, NegotiateFla
     BODY_LENGTH = 72
     Payload_start = BODY_LENGTH  # in bytes
 
-    Workstation = bytes(gethostname().upper(), 'ascii')
-    DomainName = bytes(domain.upper(), 'ascii')
-    UserName = bytes(user, 'ascii')
+    Workstation = gethostname().upper().encode('ascii')
+    DomainName = domain.upper().encode('ascii')
+    UserName = user.encode('ascii')
     EncryptedRandomSessionKey = b""
     if is_unicode:
-        Workstation = bytes(gethostname().upper(), 'utf-16-le')
-        DomainName = bytes(domain.upper(), 'utf-16-le')
-        UserName = bytes(user, 'utf-16-le')
-        EncryptedRandomSessionKey = bytes("", 'utf-16-le')
+        Workstation = gethostname().upper().encode('utf-16-le')
+        DomainName = domain.upper().encode('utf-16-le')
+        UserName = user.encode('utf-16-le')
+        EncryptedRandomSessionKey = "".encode('utf-16-le')
     LmChallengeResponse = calc_resp(create_LM_hashed_password_v1(password), nonce)
     NtChallengeResponse = calc_resp(create_NT_hashed_password_v1(password), nonce)
 

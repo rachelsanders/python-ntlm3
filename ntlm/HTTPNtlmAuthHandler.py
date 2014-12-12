@@ -69,13 +69,26 @@ class AbstractNtlmAuthHandler:
                 h = HTTPSConnection(host)  # will parse host:port
             else:
                 h = HTTPConnection(host)  # will parse host:port
+
             h.set_debuglevel(self._debuglevel)
+
             # we must keep the connection because NTLM authenticates the connection, not single requests
             headers["Connection"] = "Keep-Alive"
             headers = dict((name.title(), val) for name, val in headers.items())
-            h.request(req.get_method(), req.get_selector(), req.data, headers)
+
+            # For some reason, six doesn't do this translation correctly
+            # TODO rsanders low - find bug in six & fix it
+            try:
+                selector = req.selector
+            except AttributeError:
+                selector = req.get_selector()
+
+            h.request(req.get_method(), selector, req.data, headers)
+
             r = h.getresponse()
+
             r.begin()
+
             r._safe_read(int(r.getheader('content-length')))
             if r.getheader('set-cookie'):
                 # this is important for some web applications that store authentication-related info in cookies (it took a long time to figure out)
@@ -96,7 +109,7 @@ class AbstractNtlmAuthHandler:
             headers["Connection"] = "Close"
             headers = dict((name.title(), val) for name, val in headers.items())
             try:
-                h.request(req.get_method(), req.get_selector(), req.data, headers)
+                h.request(req.get_method(), selector, req.data, headers)
                 # none of the configured handlers are triggered, for example redirect-responses are not handled!
                 response = h.getresponse()
 
