@@ -14,9 +14,12 @@
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library.  If not, see <http://www.gnu.org/licenses/> or <http://www.gnu.org/licenses/lgpl.txt>.
 import six
+import logging
 
 from . import des_c
 
+
+log = logging.getLogger(__name__)
 
 class DES:
     des_c_obj = None
@@ -42,6 +45,11 @@ DESException = 'DESException'
 
 
 def str_to_key56(key_str):
+
+    if not type(key_str) == six.binary_type:
+        log.warn("I was called with a non-bytestring: %s" % key_str)
+        key_str = key_str.encode('ascii')
+
     if len(key_str) < 7:
         key_str = key_str + b'\000\000\000\000\000\000\000'[:(7 - len(key_str))]
     key_56 = []
