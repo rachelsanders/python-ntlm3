@@ -82,11 +82,13 @@ class DES:
 
     def __init__(self, key_str):
         # key - UChar[8]
-        key = []
-        for i in key_str:
-            key.append(ord(i))
+        #key = []
+        #for i in key_str:
+        #    key.append(ord(i))
         # print 'key:', key
-        self.KeySched = des_set_key(key)
+
+
+        self.KeySched = des_set_key(key_str)
         # print 'schedule:', self.KeySched, len(self.KeySched)
 
     def decrypt(self, str):
@@ -96,7 +98,7 @@ class DES:
             block.append(ord(i))
         # print block
         block = des_ecb_encrypt(block, self.KeySched, 0)
-        res = ''
+        res = b''
         for i in block:
             res = res + (chr(i))
         return res
@@ -110,11 +112,11 @@ class DES:
 
         block = des_ecb_encrypt(block, self.KeySched, 1)
 
-        import pdb; pdb.set_trace()
         res = b''
 
-        for i in six.iterbytes(block):
-            res += binascii.a2b_qp(i)
+        for i in block:
+            res += six.int2byte(i)
+
         return res
 
 

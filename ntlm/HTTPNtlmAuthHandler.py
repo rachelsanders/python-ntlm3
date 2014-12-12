@@ -58,10 +58,13 @@ class AbstractNtlmAuthHandler:
                 return None
             headers[self.auth_header] = auth
 
-            host = req.get_host()
+            host = req.host
+
             if not host:
                 raise urllib.request.URLError('no host given')
+
             h = None
+
             if req.get_full_url().startswith('https://'):
                 h = HTTPSConnection(host)  # will parse host:port
             else:

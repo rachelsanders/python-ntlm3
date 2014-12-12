@@ -137,14 +137,14 @@ http://www.blackhat.com/presentations/bh-asia-04/bh-jp-04-pdfs/bh-jp-04-seki.pdf
 def create_NTLM_NEGOTIATE_MESSAGE(user, type1_flags=NTLM_TYPE1_FLAGS):
     BODY_LENGTH = 40
     Payload_start = BODY_LENGTH  # in bytes
-    protocol = 'NTLMSSP\0'  # name
+    protocol = b'NTLMSSP\0'  # name
 
     type = struct.pack('<I', 1)  # type 1
 
     flags = struct.pack('<I', type1_flags)
-    Workstation = gethostname().upper().encode('ascii')
+    Workstation = bytes(gethostname().upper(), 'ascii')
     user_parts = user.split('\\', 1)
-    DomainName = user_parts[0].upper().encode('ascii')
+    DomainName = bytes(user_parts[0].upper(), 'ascii')
 
     # TODO - this variable isn't used
     EncryptedRandomSessionKey = ""  # noqa
@@ -174,14 +174,13 @@ def create_NTLM_NEGOTIATE_MESSAGE(user, type1_flags=NTLM_TYPE1_FLAGS):
     assert BODY_LENGTH == len(msg1), "BODY_LENGTH: %d != msg1: %d" % (BODY_LENGTH, len(msg1))
 
     msg1 += Workstation + DomainName
-    msg1 = base64.encodestring(msg1)
-    msg1 = string.replace(msg1, '\n', '')
-    return msg1
+    msg1 = base64.b64encode(msg1)
+    return msg1.decode()
 
 
 def parse_NTLM_CHALLENGE_MESSAGE(msg2):
     ""
-    msg2 = base64.decodestring(msg2)
+    msg2 = base64.decodebytes(bytes(msg2, 'ascii'))
 
     # TODO - this variable isn't used
     Signature = msg2[0:8]  # noqa
@@ -236,26 +235,26 @@ def create_NTLM_AUTHENTICATE_MESSAGE(nonce, user, domain, password, NegotiateFla
     BODY_LENGTH = 72
     Payload_start = BODY_LENGTH  # in bytes
 
-    Workstation = gethostname().upper()
-    DomainName = domain.upper()
-    UserName = user
-    EncryptedRandomSessionKey = ""
+    Workstation = bytes(gethostname().upper(), 'ascii')
+    DomainName = bytes(domain.upper(), 'ascii')
+    UserName = bytes(user, 'ascii')
+    EncryptedRandomSessionKey = b""
     if is_unicode:
-        Workstation = Workstation.encode('utf-16-le')
-        DomainName = DomainName.encode('utf-16-le')
-        UserName = UserName.encode('utf-16-le')
-        EncryptedRandomSessionKey = EncryptedRandomSessionKey.encode('utf-16-le')
+        Workstation = bytes(gethostname().upper(), 'utf-16-le')
+        DomainName = bytes(domain.upper(), 'utf-16-le')
+        UserName = bytes(user, 'utf-16-le')
+        EncryptedRandomSessionKey = bytes("", 'utf-16-le')
     LmChallengeResponse = calc_resp(create_LM_hashed_password_v1(password), nonce)
     NtChallengeResponse = calc_resp(create_NT_hashed_password_v1(password), nonce)
 
     if is_NegotiateExtendedSecurity:
         pwhash = create_NT_hashed_password_v1(password, UserName, DomainName)
-        ClientChallenge = ""
+        ClientChallenge = b""
         for i in range(8):
-            ClientChallenge += chr(random.getrandbits(8))
+            ClientChallenge += bytes((random.getrandbits(8),))
         (NtChallengeResponse, LmChallengeResponse) = ntlm2sr_calc_resp(pwhash, nonce,
                                                                        ClientChallenge)  # ='\x39 e3 f4 cd 59 c5 d8 60')
-    Signature = 'NTLMSSP\0'
+    Signature = b'NTLMSSP\0'
     MessageType = struct.pack('<I', 3)  # type 3
 
     DomainNameLen = struct.pack('<H', len(DomainName))
@@ -315,9 +314,8 @@ def create_NTLM_AUTHENTICATE_MESSAGE(nonce, user, domain, password, NegotiateFla
 
     Payload = DomainName + UserName + Workstation + LmChallengeResponse + NtChallengeResponse + EncryptedRandomSessionKey
     msg3 += Payload
-    msg3 = base64.encodestring(msg3)
-    msg3 = string.replace(msg3, '\n', '')
-    return msg3
+    msg3 = base64.b64encode(msg3)
+    return msg3.decode()
 
 
 def calc_resp(password_hash, server_challenge):
@@ -345,13 +343,13 @@ def calc_resp(password_hash, server_challenge):
     return res
 
 
-def ComputeResponse(ResponseKeyNT, ResponseKeyLM, ServerChallenge, ServerName, ClientChallenge='\xaa' * 8,
-                    Time='\0' * 8):
+def ComputeResponse(ResponseKeyNT, ResponseKeyLM, ServerChallenge, ServerName, ClientChallenge=b'\xaa' * 8,
+                    Time=b'\0' * 8):
     LmChallengeResponse = hmac.new(ResponseKeyLM, ServerChallenge + ClientChallenge).digest() + ClientChallenge
 
-    Responserversion = '\x01'
-    HiResponserversion = '\x01'
-    temp = Responserversion + HiResponserversion + '\0' * 6 + Time + ClientChallenge + '\0' * 4 + ServerChallenge + '\0' * 4
+    Responserversion = b'\x01'
+    HiResponserversion = b'\x01'
+    temp = Responserversion + HiResponserversion + b'\0' * 6 + Time + ClientChallenge + b'\0' * 4 + ServerChallenge + b'\0' * 4
     NTProofStr = hmac.new(ResponseKeyNT, ServerChallenge + temp).digest()
     NtChallengeResponse = NTProofStr + temp
 
@@ -378,13 +376,13 @@ def create_LM_hashed_password_v1(passwd):
 
     # fix the password length to 14 bytes
     passwd = passwd.upper()
-    lm_pw = passwd + b'\0' * (14 - len(passwd))
+    lm_pw = passwd + '\0' * (14 - len(passwd))
     lm_pw = passwd[0:14]
 
     # do hash
-    magic_str = "KGS!@#$%"  # page 57 in [MS-NLMP]
+    magic_str = b"KGS!@#$%"  # page 57 in [MS-NLMP]
 
-    res = ''
+    res = b''
     dobj = des.DES(lm_pw[0:7])
     res = res + dobj.encrypt(magic_str)
 

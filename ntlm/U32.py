@@ -15,6 +15,7 @@
 # License along with this library.  If not, see <http://www.gnu.org/licenses/> or <http://www.gnu.org/licenses/lgpl.txt>.
 
 from __future__ import division
+import six
 
 C = 0x1000000000
 
@@ -27,6 +28,9 @@ class U32:
     v = 0
 
     def __init__(self, value=0):
+        if type(value) != int:
+            value = six.byte2int(value)
+
         self.v = C + norm(abs(int(value)))
 
     def set(self, value=0):
