@@ -14,28 +14,33 @@
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library.  If not, see <http://www.gnu.org/licenses/> or <http://www.gnu.org/licenses/lgpl.txt>.
 
+from __future__ import division
+import six
 
-C = 0x1000000000L
+C = 0x1000000000
 
 
 def norm(n):
-    return n & 0xFFFFFFFFL
+    return n & 0xFFFFFFFF
 
 
 class U32:
-    v = 0L
+    v = 0
 
     def __init__(self, value=0):
-        self.v = C + norm(abs(long(value)))
+        if type(value) != int:
+            value = six.byte2int(value)
+
+        self.v = C + norm(abs(int(value)))
 
     def set(self, value=0):
-        self.v = C + norm(abs(long(value)))
+        self.v = C + norm(abs(int(value)))
 
     def __repr__(self):
         return hex(norm(self.v))
 
     def __long__(self):
-        return long(norm(self.v))
+        return int(norm(self.v))
 
     def __int__(self):
         return int(norm(self.v))
@@ -51,7 +56,7 @@ class U32:
     def __sub__(self, b):
         r = U32()
         if self.v < b.v:
-            r.v = C + norm(0x100000000L - (b.v - self.v))
+            r.v = C + norm(0x100000000 - (b.v - self.v))
         else:
             r.v = C + norm(self.v - b.v)
         return r
@@ -62,6 +67,11 @@ class U32:
         return r
 
     def __div__(self, b):
+        r = U32()
+        r.v = C + (norm(self.v) // norm(b.v))
+        return r
+
+    def __truediv__(self, b):
         r = U32()
         r.v = C + (norm(self.v) / norm(b.v))
         return r
@@ -123,6 +133,24 @@ class U32:
             return -1
         else:
             return 0
+
+    def __lt__(self, other):
+        return self.v < other.v
+
+    def __gt__(self, other):
+        return self.v > other.v
+
+    def __eq__(self, other):
+        return self.v == other.v
+
+    def __le__(self, other):
+        return self.v <= other.v
+
+    def __ge__(self, other):
+        return self.v >= other.v
+
+    def __ne__(self, other):
+        return self.v != other.v
 
     def __nonzero__(self):
         return norm(self.v)

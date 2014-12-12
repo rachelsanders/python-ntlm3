@@ -1,9 +1,6 @@
 from setuptools import setup
 
 
-ENTRY_POINTS = {"console_scripts": ["ntlm_example_simple=ntlm_examples.simple:main",
-                "ntlm_example_extended=ntlm_examples.extended:main"]}
-
 setup(name='python-ntlm',
       version='2.0-dev',
       description='Python library that provides NTLM support, including an authentication handler for urllib2. '
@@ -26,9 +23,13 @@ setup(name='python-ntlm',
       url="http://code.google.com/p/python-ntlm",
       packages=["ntlm"],
       zip_safe=False,
-      entry_points=ENTRY_POINTS,
       license="GNU Lesser GPL",
       # See https://pypi.python.org/pypi?%3Aaction=list_classifiers
+
+      install_requires=[
+          "six"
+      ],
+
       classifiers=[
           "License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)"
           # Specify the Python versions you support here. In particular, ensure

@@ -14,13 +14,14 @@
 import struct
 import base64
 import string
-import des
 import hashlib
 import hmac
 import random
 import re
 import binascii
 from socket import gethostname
+
+from . import des
 
 NTLM_NegotiateUnicode = 0x00000001
 NTLM_NegotiateOEM = 0x00000002
@@ -136,7 +137,7 @@ http://www.blackhat.com/presentations/bh-asia-04/bh-jp-04-pdfs/bh-jp-04-seki.pdf
 def create_NTLM_NEGOTIATE_MESSAGE(user, type1_flags=NTLM_TYPE1_FLAGS):
     BODY_LENGTH = 40
     Payload_start = BODY_LENGTH  # in bytes
-    protocol = 'NTLMSSP\0'  # name
+    protocol = b'NTLMSSP\0'  # name
 
     type = struct.pack('<I', 1)  # type 1
 
@@ -173,14 +174,13 @@ def create_NTLM_NEGOTIATE_MESSAGE(user, type1_flags=NTLM_TYPE1_FLAGS):
     assert BODY_LENGTH == len(msg1), "BODY_LENGTH: %d != msg1: %d" % (BODY_LENGTH, len(msg1))
 
     msg1 += Workstation + DomainName
-    msg1 = base64.encodestring(msg1)
-    msg1 = string.replace(msg1, '\n', '')
-    return msg1
+    msg1 = base64.b64encode(msg1)
+    return msg1.decode()
 
 
 def parse_NTLM_CHALLENGE_MESSAGE(msg2):
     ""
-    msg2 = base64.decodestring(msg2)
+    msg2 = base64.b64decode(msg2)
 
     # TODO - this variable isn't used
     Signature = msg2[0:8]  # noqa
@@ -235,26 +235,26 @@ def create_NTLM_AUTHENTICATE_MESSAGE(nonce, user, domain, password, NegotiateFla
     BODY_LENGTH = 72
     Payload_start = BODY_LENGTH  # in bytes
 
-    Workstation = gethostname().upper()
-    DomainName = domain.upper()
-    UserName = user
-    EncryptedRandomSessionKey = ""
+    Workstation = gethostname().upper().encode('ascii')
+    DomainName = domain.upper().encode('ascii')
+    UserName = user.encode('ascii')
+    EncryptedRandomSessionKey = b""
     if is_unicode:
-        Workstation = Workstation.encode('utf-16-le')
-        DomainName = DomainName.encode('utf-16-le')
-        UserName = UserName.encode('utf-16-le')
-        EncryptedRandomSessionKey = EncryptedRandomSessionKey.encode('utf-16-le')
+        Workstation = gethostname().upper().encode('utf-16-le')
+        DomainName = domain.upper().encode('utf-16-le')
+        UserName = user.encode('utf-16-le')
+        EncryptedRandomSessionKey = "".encode('utf-16-le')
     LmChallengeResponse = calc_resp(create_LM_hashed_password_v1(password), nonce)
     NtChallengeResponse = calc_resp(create_NT_hashed_password_v1(password), nonce)
 
     if is_NegotiateExtendedSecurity:
         pwhash = create_NT_hashed_password_v1(password, UserName, DomainName)
-        ClientChallenge = ""
+        ClientChallenge = b""
         for i in range(8):
-            ClientChallenge += chr(random.getrandbits(8))
+            ClientChallenge += bytes((random.getrandbits(8),))
         (NtChallengeResponse, LmChallengeResponse) = ntlm2sr_calc_resp(pwhash, nonce,
                                                                        ClientChallenge)  # ='\x39 e3 f4 cd 59 c5 d8 60')
-    Signature = 'NTLMSSP\0'
+    Signature = b'NTLMSSP\0'
     MessageType = struct.pack('<I', 3)  # type 3
 
     DomainNameLen = struct.pack('<H', len(DomainName))
@@ -314,9 +314,8 @@ def create_NTLM_AUTHENTICATE_MESSAGE(nonce, user, domain, password, NegotiateFla
 
     Payload = DomainName + UserName + Workstation + LmChallengeResponse + NtChallengeResponse + EncryptedRandomSessionKey
     msg3 += Payload
-    msg3 = base64.encodestring(msg3)
-    msg3 = string.replace(msg3, '\n', '')
-    return msg3
+    msg3 = base64.b64encode(msg3)
+    return msg3.decode()
 
 
 def calc_resp(password_hash, server_challenge):
@@ -330,8 +329,9 @@ def calc_resp(password_hash, server_challenge):
             24-byte buffer to contain the LM response upon return
     """
     # padding with zeros to make the hash 21 bytes long
-    password_hash = password_hash + '\0' * (21 - len(password_hash))
-    res = ''
+    password_hash += b'\0' * (21 - len(password_hash))
+
+    res = b''
     dobj = des.DES(password_hash[0:7])
     res = res + dobj.encrypt(server_challenge[0:8])
 
@@ -343,13 +343,13 @@ def calc_resp(password_hash, server_challenge):
     return res
 
 
-def ComputeResponse(ResponseKeyNT, ResponseKeyLM, ServerChallenge, ServerName, ClientChallenge='\xaa' * 8,
-                    Time='\0' * 8):
+def ComputeResponse(ResponseKeyNT, ResponseKeyLM, ServerChallenge, ServerName, ClientChallenge=b'\xaa' * 8,
+                    Time=b'\0' * 8):
     LmChallengeResponse = hmac.new(ResponseKeyLM, ServerChallenge + ClientChallenge).digest() + ClientChallenge
 
-    Responserversion = '\x01'
-    HiResponserversion = '\x01'
-    temp = Responserversion + HiResponserversion + '\0' * 6 + Time + ClientChallenge + '\0' * 4 + ServerChallenge + '\0' * 4
+    Responserversion = b'\x01'
+    HiResponserversion = b'\x01'
+    temp = Responserversion + HiResponserversion + b'\0' * 6 + Time + ClientChallenge + b'\0' * 4 + ServerChallenge + b'\0' * 4
     NTProofStr = hmac.new(ResponseKeyNT, ServerChallenge + temp).digest()
     NtChallengeResponse = NTProofStr + temp
 
@@ -359,31 +359,30 @@ def ComputeResponse(ResponseKeyNT, ResponseKeyLM, ServerChallenge, ServerName, C
     return (NtChallengeResponse, LmChallengeResponse)
 
 
-def ntlm2sr_calc_resp(ResponseKeyNT, ServerChallenge, ClientChallenge='\xaa' * 8):
-    import hashlib
+def ntlm2sr_calc_resp(ResponseKeyNT, ServerChallenge, ClientChallenge=b'\xaa' * 8):
 
-    LmChallengeResponse = ClientChallenge + '\0' * 16
+    LmChallengeResponse = ClientChallenge + b'\0' * 16
     sess = hashlib.md5(ServerChallenge + ClientChallenge).digest()
     NtChallengeResponse = calc_resp(ResponseKeyNT, sess[0:8])
     return (NtChallengeResponse, LmChallengeResponse)
 
 
 def create_LM_hashed_password_v1(passwd):
-    "setup LanManager password"
-    "create LanManager hashed password"
+    """create LanManager hashed password"""
+
     # if the passwd provided is already a hash, we just return the first half
     if re.match(r'^[\w]{32}:[\w]{32}$', passwd):
         return binascii.unhexlify(passwd.split(':')[0])
 
     # fix the password length to 14 bytes
-    passwd = string.upper(passwd)
+    passwd = passwd.upper()
     lm_pw = passwd + '\0' * (14 - len(passwd))
     lm_pw = passwd[0:14]
 
     # do hash
-    magic_str = "KGS!@#$%"  # page 57 in [MS-NLMP]
+    magic_str = b"KGS!@#$%"  # page 57 in [MS-NLMP]
 
-    res = ''
+    res = b''
     dobj = des.DES(lm_pw[0:7])
     res = res + dobj.encrypt(magic_str)
 

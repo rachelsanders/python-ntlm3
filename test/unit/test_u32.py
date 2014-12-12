@@ -3,23 +3,28 @@ import pytest
 
 from ntlm.U32 import U32
 
+from ntlm.compat import _long
+
 
 class Test_U32(unittest.TestCase):
 
     def test_can_pass_in_value_via_init(self):
-        assert U32(100).__repr__() == '0x64L'
+        assert U32(100).__repr__() == '0x64'
 
     def test_negative_numbers_are_converted_to_positive(self):
-        assert U32(-100).__repr__() == '0x64L'
+        assert U32(-100).__repr__() == '0x64'
 
     def test_can_set_value_via_method(self):
         n = U32()
-        assert n.__repr__() == '0x0L'
+        assert n.__repr__() == '0x0'
         n.set(100)
-        assert U32(100).__repr__() == '0x64L'
+        assert U32(100).__repr__() == '0x64'
+
+    def test_eq_values_are_eq(self):
+        assert U32(100) == U32(100)
 
     def test_can_cast_to_long(self):
-        assert long(U32(100)) == 100L
+        assert _long(U32(100)) == 100
 
     def test_can_chr(self):
         assert U32(100).__chr__() == chr(ord('d'))
@@ -58,7 +63,7 @@ class Test_U32(unittest.TestCase):
 
     @pytest.mark.skipif(True, reason="I need to read this code and understand what it does")
     def test_can_invert(self):
-        assert ~U32(100) == 0xffffff9bL
+        assert ~U32(100) == 0xffffff9b
 
     @pytest.mark.skipif(True, reason="This test appears to be broken in the code")
     def test_can_truth(self):

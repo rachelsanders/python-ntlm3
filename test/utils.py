@@ -1,4 +1,4 @@
-from binascii import unhexlify
+from binascii import unhexlify, hexlify
 from httpretty.core import text_type, utf8
 
 
@@ -6,7 +6,7 @@ def ByteToHex(byteStr):
     """
     Convert a byte string to it's hex string representation e.g. for output.
     """
-    return ' '.join(["%02X" % x for x in byteStr])
+    return ' '.join([hexlify(x) for x in byteStr])
 
 
 def HexToByte(hexStr):

@@ -55,7 +55,7 @@ SUCCESSFUL_CONNECTION_HEADERS = {
   "connection": "close",
   }
 
-SUCCESSFUL_CONNECTION_BODY = "Hello world!"
+SUCCESSFUL_CONNECTION_BODY = b"Hello world!"
 
 
 DUPLICATE_HEADERS = """HTTP/1.1 401 Unauthorized

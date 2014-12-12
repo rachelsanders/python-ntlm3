@@ -13,9 +13,13 @@
 #
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library.  If not, see <http://www.gnu.org/licenses/> or <http://www.gnu.org/licenses/lgpl.txt>.
+import six
+import logging
 
-import des_c
+from . import des_c
 
+
+log = logging.getLogger(__name__)
 
 class DES:
     des_c_obj = None
@@ -23,9 +27,11 @@ class DES:
     def __init__(self, key_str):
         k = str_to_key56(key_str)
         k = key56_to_key64(k)
-        key_str = ''
+
+        key_str = b''
         for i in k:
-            key_str += chr(i & 0xFF)
+            key_str += six.int2byte(i & 0xFF)
+
         self.des_c_obj = des_c.DES(key_str)
 
     def encrypt(self, plain_text):
@@ -39,11 +45,16 @@ DESException = 'DESException'
 
 
 def str_to_key56(key_str):
+
+    if not type(key_str) == six.binary_type:
+        log.warn("I was called with a non-bytestring: %s" % key_str)
+        key_str = key_str.encode('ascii')
+
     if len(key_str) < 7:
-        key_str = key_str + '\000\000\000\000\000\000\000'[:(7 - len(key_str))]
+        key_str = key_str + b'\000\000\000\000\000\000\000'[:(7 - len(key_str))]
     key_56 = []
-    for i in key_str[:7]:
-        key_56.append(ord(i))
+    for i in six.iterbytes(key_str[:7]):
+        key_56.append(i)
 
     return key_56
 
