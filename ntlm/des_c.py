@@ -94,13 +94,17 @@ class DES:
     def decrypt(self, str):
         # block - UChar[]
         block = []
-        for i in str:
-            block.append(ord(i))
+
+        for i in six.iterbytes(str):
+            block.append(i)
+
         # print block
         block = des_ecb_encrypt(block, self.KeySched, 0)
+
         res = b''
         for i in block:
-            res = res + (chr(i))
+            res = res + six.int2byte(i)
+
         return res
 
     def encrypt(self, plaintext):
