@@ -13,6 +13,8 @@
 
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library.  If not, see <http://www.gnu.org/licenses/> or <http://www.gnu.org/licenses/lgpl.txt>.
+import six
+import binascii
 
 from .U32 import U32
 from .des_data import des_SPtrans, des_skb
@@ -99,15 +101,20 @@ class DES:
             res = res + (chr(i))
         return res
 
-    def encrypt(self, str):
+    def encrypt(self, plaintext):
         # block - UChar[]
+
         block = []
-        for i in str:
-            block.append(ord(i))
+        for i in plaintext:
+            block.append(i)
+
         block = des_ecb_encrypt(block, self.KeySched, 1)
-        res = ''
-        for i in block:
-            res = res + (chr(i))
+
+        import pdb; pdb.set_trace()
+        res = b''
+
+        for i in six.iterbytes(block):
+            res += binascii.a2b_qp(i)
         return res
 
 

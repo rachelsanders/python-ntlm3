@@ -331,8 +331,9 @@ def calc_resp(password_hash, server_challenge):
             24-byte buffer to contain the LM response upon return
     """
     # padding with zeros to make the hash 21 bytes long
-    password_hash = password_hash + '\0' * (21 - len(password_hash))
-    res = ''
+    password_hash += b'\0' * (21 - len(password_hash))
+
+    res = b''
     dobj = des.DES(password_hash[0:7])
     res = res + dobj.encrypt(server_challenge[0:8])
 
@@ -360,10 +361,9 @@ def ComputeResponse(ResponseKeyNT, ResponseKeyLM, ServerChallenge, ServerName, C
     return (NtChallengeResponse, LmChallengeResponse)
 
 
-def ntlm2sr_calc_resp(ResponseKeyNT, ServerChallenge, ClientChallenge='\xaa' * 8):
-    import hashlib
+def ntlm2sr_calc_resp(ResponseKeyNT, ServerChallenge, ClientChallenge=b'\xaa' * 8):
 
-    LmChallengeResponse = ClientChallenge + '\0' * 16
+    LmChallengeResponse = ClientChallenge + b'\0' * 16
     sess = hashlib.md5(ServerChallenge + ClientChallenge).digest()
     NtChallengeResponse = calc_resp(ResponseKeyNT, sess[0:8])
     return (NtChallengeResponse, LmChallengeResponse)
@@ -378,7 +378,7 @@ def create_LM_hashed_password_v1(passwd):
 
     # fix the password length to 14 bytes
     passwd = passwd.upper()
-    lm_pw = passwd + '\0' * (14 - len(passwd))
+    lm_pw = passwd + b'\0' * (14 - len(passwd))
     lm_pw = passwd[0:14]
 
     # do hash

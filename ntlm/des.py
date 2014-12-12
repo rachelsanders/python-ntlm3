@@ -13,6 +13,7 @@
 #
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library.  If not, see <http://www.gnu.org/licenses/> or <http://www.gnu.org/licenses/lgpl.txt>.
+import six
 
 from . import des_c
 
@@ -40,10 +41,10 @@ DESException = 'DESException'
 
 def str_to_key56(key_str):
     if len(key_str) < 7:
-        key_str = key_str + '\000\000\000\000\000\000\000'[:(7 - len(key_str))]
+        key_str += b'\000\000\000\000\000\000\000'[:(7 - len(key_str))]
     key_56 = []
-    for i in key_str[:7]:
-        key_56.append(ord(i))
+    for i in six.iterbytes(key_str[:7]):
+        key_56.append(i)
 
     return key_56
 

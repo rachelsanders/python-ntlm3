@@ -20,12 +20,15 @@ class Test_NTLMAuthHandler(unittest.TestCase):
 
         def request_callback(request, uri, headers):
             """
-            The ntlm module makes three requests when
-                1. The initial request, which should get a 401 and a www-authenticate: NTLM response
-                2. The second request, which should contain our challenge response, and a Keep-Alive header
-                3. The third request, where we pretend to have looked that shit up and give them what
-                they wanted in the first place.
+            The ntlm module makes three requests. We mock the responses by returning:
+                1. The first response should be have a 401 status and contain a www-authenticate: NTLM response
+                2. The second response should contain our challenge response, and a Keep-Alive header
+                3. The third response, where we pretend to authenticate their challenge handshake and return the page
+                they requested in the first place. (200 status and the requested page contents)
             """
+            # This is mostly just paranoia. You can suss out from the request what response is necessary (they all
+            # have diffrent headers and are distinguishable) but I wanted to enforce the serial nature of the handshake
+            # in case the ordering got screwed up on the client side.
             global counter
 
             counter += 1
@@ -79,12 +82,15 @@ class Test_NTLMAuthHandler(unittest.TestCase):
 
         def request_callback(request, uri, headers):
             """
-            The ntlm module makes three requests when
-                1. The initial request, which should get a 401 and a www-authenticate: NTLM response
-                2. The second request, which should contain our challenge response, and a Keep-Alive header
-                3. The third request, where we pretend to have looked that shit up and give them what
-                they wanted in the first place.
+            The ntlm module makes three requests. We mock the responses by returning:
+                1. The first response should be have a 401 status and contain a www-authenticate: NTLM response
+                2. The second response should contain our challenge response, and a Keep-Alive header
+                3. The third response, where we pretend to authenticate their challenge handshake and return the page
+                they requested in the first place. (200 status and the requested page contents)
             """
+            # This is mostly just paranoia. You can suss out from the request what response is necessary (they all
+            # have diffrent headers and are distinguishable) but I wanted to enforce the serial nature of the handshake
+            # in case the ordering got screwed up on the client side.
             global counter
 
             counter += 1
