@@ -9,6 +9,7 @@ from ..utils import MockRawServerResponse
 
 from six.moves import urllib
 
+
 class Test_NTLMAuthHandler_Issues(unittest.TestCase):
 
     @httprettified
@@ -87,8 +88,6 @@ class Test_NTLMAuthHandler_Issues(unittest.TestCase):
                 Response(status=401, body="", forcing_headers=BASIC_AUTH_HEADERS),
                 ]
         )
-
-
 
     passman = urllib.request.HTTPPasswordMgrWithDefaultRealm()
     passman.add_password(None, FAKE_URL, FAKE_USER, FAKE_PASSWORD)

@@ -10,7 +10,6 @@ Run with:
 The script will prompt you for a password, or you can specify one with --password <password> if you prefer.
 
 """
-import sys
 from six.moves import urllib
 import getpass
 
@@ -20,6 +19,7 @@ except ImportError:
     raise SystemExit("Hi, I see you're on Python 2.6. Please run 'pip install argparse' and try again.")
 
 import ntlm
+
 
 def process(user, password, url):
 

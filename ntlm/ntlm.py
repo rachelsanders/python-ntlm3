@@ -13,7 +13,6 @@
 
 import struct
 import base64
-import string
 import hashlib
 import hmac
 import random

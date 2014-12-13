@@ -10,10 +10,10 @@ from ..fixtures import *  # noqa
 
 
 class Test_NTLMAuthHandler(unittest.TestCase):
+
     def setUp(self):
         global counter
         counter = 0  # globals are gross, but they have their place
-
 
     @httprettified
     def test_normal_handshake(self):
@@ -76,7 +76,6 @@ class Test_NTLMAuthHandler(unittest.TestCase):
         f = opener.open(FAKE_URL)
         assert f.read() == SUCCESSFUL_CONNECTION_BODY
 
-
     @httprettified
     def test_if_we_send_a_cookie_it_gets_sent_to_the_server(self):
 
@@ -138,4 +137,3 @@ class Test_NTLMAuthHandler(unittest.TestCase):
 
         # The real tests is up in the callback function, this is just sanity testing
         assert f.read() == SUCCESSFUL_CONNECTION_BODY
-

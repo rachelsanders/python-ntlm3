@@ -14,7 +14,6 @@
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library.  If not, see <http://www.gnu.org/licenses/> or <http://www.gnu.org/licenses/lgpl.txt>.
 import six
-import binascii
 
 from .U32 import U32
 from .des_data import des_SPtrans, des_skb
@@ -81,15 +80,7 @@ class DES:
     KeySched = None  # des_key_schedule
 
     def __init__(self, key_str):
-        # key - UChar[8]
-        #key = []
-        #for i in key_str:
-        #    key.append(ord(i))
-        # print 'key:', key
-
-
         self.KeySched = des_set_key(key_str)
-        # print 'schedule:', self.KeySched, len(self.KeySched)
 
     def decrypt(self, str):
         # block - UChar[]

@@ -19,6 +19,7 @@ import re
 
 from . import ntlm
 
+
 class AbstractNtlmAuthHandler:
     def __init__(self, password_mgr=None, debuglevel=0):
 
@@ -143,4 +144,3 @@ class ProxyNtlmAuthHandler(AbstractNtlmAuthHandler, urllib.request.BaseHandler):
 
     def http_error_407(self, req, fp, code, msg, headers):
         return self.http_error_authentication_required('proxy-authenticate', req, fp, headers)
-

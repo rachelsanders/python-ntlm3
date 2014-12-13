@@ -1,5 +1,4 @@
 
-from .HTTPNtlmAuthHandler import HTTPNtlmAuthHandler
+from .HTTPNtlmAuthHandler import HTTPNtlmAuthHandler  # noqa
 
 __all__ = ('HTTPNtlmAuthHandler')
-

@@ -21,6 +21,7 @@ from . import des_c
 
 log = logging.getLogger(__name__)
 
+
 class DES:
     des_c_obj = None
 
