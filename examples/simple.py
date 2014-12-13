@@ -1,41 +1,52 @@
+#! /usr/bin/env python
+
 """
-Usage:  simple.py <password> <url>
+A simple script to demonstrate how this package works.
 
-This downloads an NTML-protected webpage to stdout.  The username is
-constructed from the USERDOMAIN and USERNAME environment variables.
-Note that the password is entered on the command line; this is almost
-certainly a security risk but unfortunately I know of no foolproof
-method in Python for prompting for a password from standard input.
+Run with:
 
-This script only understands NTML authentication.
+    python simple.py --username "DOMAIN\\username" --url "http://some.protected/url"
+
+The script will prompt you for a password, or you can specify one with --password <password> if you prefer.
+
 """
-
-import urllib2
-import inspect, os, sys
+import sys
+from six.moves import urllib
+import getpass
 
 try:
-    from ntlm import HTTPNtlmAuthHandler
+    import argparse
 except ImportError:
-    # assume ntlm is in the directory "next door"
-    ntlm_folder = os.path.realpath(os.path.join(
-        os.path.dirname(inspect.getfile(inspect.currentframe())),
-        '..'))
-    sys.path.insert(0, ntlm_folder)
-    from ntlm import HTTPNtlmAuthHandler
+    raise SystemExit("Hi, I see you're on Python 2.6. Please run 'pip install argparse' and try again.")
 
-def process(password, url):
-    user = '%s\%s' % ( os.environ["USERDOMAIN"], os.environ["USERNAME"] )
-    
-    passman = urllib2.HTTPPasswordMgrWithDefaultRealm()
-    passman.add_password(None, url, user, password)
+import ntlm
+
+def process(user, password, url):
+
+    passman = urllib.request.HTTPPasswordMgrWithDefaultRealm()
+    passman.add_password(None,  url, user, password)
+
     # create the NTLM authentication handler
-    auth_NTLM = HTTPNtlmAuthHandler.HTTPNtlmAuthHandler(passman)
-    
-    # create and install the opener
-    opener = urllib2.build_opener(auth_NTLM)
-    urllib2.install_opener(opener)
-    
-    # retrieve the result
-    response = urllib2.urlopen(url)
+    auth_NTLM = ntlm.HTTPNtlmAuthHandler(passman)
+
+    opener = urllib.request.build_opener(auth_NTLM)
+
+    response = opener.open(url)
+
     print(response.read())
 
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument('--url', help='A url protected behind NTLM auth', required=True)
+    parser.add_argument('-u', '--username', help='Your username, in the form "DOMAIN\\username"', required=True)
+    parser.add_argument('-p', '--password', help='Your password. Optional, the script will prompt for it.')
+
+    args = parser.parse_args()
+
+    if args.password:
+        password = args.password
+    else:
+        password = getpass.getpass()
+
+    process(user=args.username, password=password, url=args.url)
