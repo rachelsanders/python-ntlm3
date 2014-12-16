@@ -1,6 +1,6 @@
 python-ntlm
 ============
-[![Build Status](https://travis-ci.org/trustrachel/python-ntlm.svg?branch=master)](https://travis-ci.org/trustrachel/python-ntlm) [![Coverage Status](https://coveralls.io/repos/trustrachel/python-ntlm/badge.png?branch=master)](https://coveralls.io/r/trustrachel/python-ntlm?branch=master)
+[![Build Status](https://travis-ci.org/trustrachel/python-ntlm3.svg?branch=master)](https://travis-ci.org/trustrachel/python-ntlm) [![Coverage Status](https://coveralls.io/repos/trustrachel/python-ntlm/badge.png?branch=master)](https://coveralls.io/r/trustrachel/python-ntlm?branch=master)
 
 This is an experimental (and unofficial) fork of the [python-ntlm](https://code.google.com/p/python-ntlm) project, which is not currently Python 3 compatible. The purpose of this repo is to kickstart that process and make it easy for contributers to test their changes so we can contribute back to the original repo, since github has beautiful integration with Travis and we can test this process.
 
