@@ -48,7 +48,7 @@ DESException = 'DESException'
 def str_to_key56(key_str):
 
     if not type(key_str) == six.binary_type:
-        log.warn("I was called with a non-bytestring: %s" % key_str)
+        # TODO rsanders high - figure out how to make this not necessary
         key_str = key_str.encode('ascii')
 
     if len(key_str) < 7:
