@@ -10,9 +10,9 @@ Domain = "Domain"
 Password = "Password"
 RandomSessionKey = '\55'*16
 
-FAKE_USER = "User"
-FAKE_DOMAIN = "Domain"
-FAKE_PASSWORD = "Password"
+FAKE_USER = "Tester"
+FAKE_DOMAIN = "World"
+FAKE_PASSWORD = "omgiamfakepassword"
 
 FULL_DOMAIN = '%s\\%s' % (FAKE_DOMAIN, FAKE_USER)
 

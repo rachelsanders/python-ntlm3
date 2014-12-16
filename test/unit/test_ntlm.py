@@ -1,9 +1,9 @@
 import unittest
 import pytest
 
-from ntlm.ntlm import create_LM_hashed_password_v1, create_NT_hashed_password_v1, \
+from ntlm3.ntlm import create_LM_hashed_password_v1, create_NT_hashed_password_v1, \
     create_sessionbasekey, calc_resp, ntlm2sr_calc_resp, create_NT_hashed_password_v2, \
-    create_NTLM_NEGOTIATE_MESSAGE, ComputeResponse
+    create_NTLM_NEGOTIATE_MESSAGE, ComputeResponse, create_NTLM_AUTHENTICATE_MESSAGE
 
 
 from ..fixtures import *  # noqa
@@ -28,6 +28,8 @@ class Test_HashingPasswords(unittest.TestCase):
         assert HexToByte("0c 86 8a 40 3b fd 7a 93 a3 00 1e f2 2e f0 2e 3f") == create_NT_hashed_password_v2(Password, User, Domain)
 
 
+
+
 class Test_HashedPasswordResponse(unittest.TestCase):
 
     def test_response_to_LM_hashed_password(self):
@@ -43,6 +45,19 @@ class Test_HashedPasswordResponse(unittest.TestCase):
         (NTLMv1Response, LMv1Response) = ntlm2sr_calc_resp(create_NT_hashed_password_v1(Password), ServerChallenge, ClientChallenge)
         assert HexToByte("aa aa aa aa aa aa aa aa 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00") == LMv1Response
         assert HexToByte("75 37 f8 03 ae 36 71 28 ca 45 82 04 bd e7 ca f8 1e 97 ed 26 83 26 72 32") == NTLMv1Response
+
+    def test_ntlm2sr_calc_resp(self):
+        password_hash = HexToByte("8f 46 35 4d 0c ba 32 9b ea e1 35 67 04 05 21 72")
+        nonce = HexToByte("71 67 c3 cb 8f ad f0 81")
+        client_challenge = HexToByte("03 a5 30 b1 4f df 3a 5c")
+
+        expected_NtChallengeResponse = HexToByte("75 1a 9e 98 51 f0 44 53 64 c6 8e 30 6a 1e 4f 0d 0d 43 f1 1c 24 4c 40 86")
+        expected_LMChallengeResponse = HexToByte("03 a5 30 b1 4f df 3a 5c 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+
+        (NTLMv1Response, LMv1Response) = ntlm2sr_calc_resp(password_hash, nonce, client_challenge)
+
+        assert NTLMv1Response == expected_NtChallengeResponse
+        assert LMv1Response == expected_LMChallengeResponse
 
     def test_response_to_NTLM_v2(self):
         # [MS-NLMP] page 76

@@ -4,7 +4,7 @@ from six.moves import urllib
 
 from httpretty import HTTPretty, httprettified
 
-from ntlm import HTTPNtlmAuthHandler
+from ntlm3 import HTTPNtlmAuthHandler
 
 from ..fixtures import *  # noqa
 

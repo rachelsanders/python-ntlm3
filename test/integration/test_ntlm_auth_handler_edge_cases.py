@@ -2,7 +2,7 @@ import unittest
 import pytest
 from httpretty import HTTPretty, httprettified, Response
 
-from ntlm import HTTPNtlmAuthHandler
+from ntlm3 import HTTPNtlmAuthHandler
 
 from ..fixtures import *  # noqa
 from ..utils import MockRawServerResponse

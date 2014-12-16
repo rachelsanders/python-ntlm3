@@ -20,6 +20,8 @@ import re
 import binascii
 from socket import gethostname
 
+import six
+
 from . import des
 
 NTLM_NegotiateUnicode = 0x00000001
@@ -174,7 +176,7 @@ def create_NTLM_NEGOTIATE_MESSAGE(user, type1_flags=NTLM_TYPE1_FLAGS):
 
     msg1 += Workstation + DomainName
     msg1 = base64.b64encode(msg1)
-    return msg1.decode()
+    return msg1
 
 
 def parse_NTLM_CHALLENGE_MESSAGE(msg2):
@@ -225,7 +227,7 @@ def parse_NTLM_CHALLENGE_MESSAGE(msg2):
 
 
 def create_NTLM_AUTHENTICATE_MESSAGE(nonce, user, domain, password, NegotiateFlags):
-    ""
+
     is_unicode = NegotiateFlags & NTLM_NegotiateUnicode
     is_NegotiateExtendedSecurity = NegotiateFlags & NTLM_NegotiateExtendedSecurity
 
@@ -250,7 +252,8 @@ def create_NTLM_AUTHENTICATE_MESSAGE(nonce, user, domain, password, NegotiateFla
         pwhash = create_NT_hashed_password_v1(password, UserName, DomainName)
         ClientChallenge = b""
         for i in range(8):
-            ClientChallenge += bytes((random.getrandbits(8),))
+            ClientChallenge += six.int2byte(random.getrandbits(8))
+
         (NtChallengeResponse, LmChallengeResponse) = ntlm2sr_calc_resp(pwhash, nonce,
                                                                        ClientChallenge)  # ='\x39 e3 f4 cd 59 c5 d8 60')
     Signature = b'NTLMSSP\0'
@@ -314,7 +317,7 @@ def create_NTLM_AUTHENTICATE_MESSAGE(nonce, user, domain, password, NegotiateFla
     Payload = DomainName + UserName + Workstation + LmChallengeResponse + NtChallengeResponse + EncryptedRandomSessionKey
     msg3 += Payload
     msg3 = base64.b64encode(msg3)
-    return msg3.decode()
+    return msg3
 
 
 def calc_resp(password_hash, server_challenge):

@@ -1,6 +1,6 @@
 import unittest
 
-from ntlm.des import DES
+from ntlm3.des import DES
 
 
 class Test_Encryption(unittest.TestCase):
