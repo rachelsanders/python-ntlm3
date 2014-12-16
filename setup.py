@@ -2,8 +2,8 @@ from setuptools import setup
 
 
 setup(name='python-ntlm3',
-      version='1.0',
-      description='Python library for NTLM.',
+      version='1.1-dev',
+      description='Python 3 compatible NTLM library',
       long_description="""
       This package allows Python clients running on any operating
       system to provide NTLM authentication to a supporting server.
@@ -23,7 +23,7 @@ setup(name='python-ntlm3',
       ],
 
       classifiers=[
-          "License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)"
+          "License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)",
           # Specify the Python versions you support here. In particular, ensure
           # that you indicate whether you support Python 2, Python 3 or both.
           'Programming Language :: Python :: 2',
