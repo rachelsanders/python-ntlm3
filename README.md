@@ -7,7 +7,7 @@ This is a Python 3 compatible fork of the [python-ntlm](https://code.google.com/
 About this library
 ------------------
 
-This library handles the low-level details of NTLM authentication. Most users will want to use [requests-ntlm](https://github.com/requests/requests-ntlm), which is a plugin to requests that [*will use, pull request pending] uses this library under the hood. 
+This library handles the low-level details of NTLM authentication. Almost all users should use [requests-ntlm](https://github.com/requests/requests-ntlm) instead, which is a plugin to requests that uses this library under the hood and is way easier to use and understand. 
 
 Installation
 ------------
@@ -25,8 +25,11 @@ To install from source, download the source code, then run:
 Usage
 ------------
 
-This library has an identical api to python-ntlm and should be a drop-in replacement. To use, include this:
+This library has an identical API as python-ntlm and is a drop-in replacement. To use, include this:
 
     import ntlm3 as ntlm
 
-[TODO - add more usage here on how to use it]
+API
+----------
+
+TODO
