@@ -13,3 +13,4 @@ IF "%PYTHON_ARCH%"=="64" (
     SET MSSdk=1
 ) ELSE (
     ECHO Using default MSVC build environment for 32bit architecture
+)
