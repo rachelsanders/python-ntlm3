@@ -80,8 +80,6 @@ function main () {
     InstallPython $env:PYTHON_VERSION $env:PYTHON_ARCH $env:PYTHON
     InstallPip $env:PYTHON
     InstallPackage $env:PYTHON wheel
-    $env:PYTHON setup.py install
-    InstallPackage $env:PYTHON -r requirements-dev.txt
 }
 
 main
