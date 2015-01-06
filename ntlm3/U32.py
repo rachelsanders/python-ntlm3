@@ -28,7 +28,7 @@ class U32:
     v = 0
 
     def __init__(self, value=0):
-        if type(value) != int:
+        if not isinstance(value, six.integer_types):
             value = six.byte2int(value)
 
         self.v = C + norm(abs(int(value)))
