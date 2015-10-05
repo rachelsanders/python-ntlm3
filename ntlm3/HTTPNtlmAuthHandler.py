@@ -123,7 +123,7 @@ class AbstractNtlmAuthHandler:
                 infourl.msg = response.reason
                 return infourl
             except socket.error as err:
-                raise urllib.URLError(err)
+                raise urllib.error.URLError(err)
         else:
             return None
 
