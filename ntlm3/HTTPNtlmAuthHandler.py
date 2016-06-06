@@ -21,10 +21,11 @@ from . import ntlm
 
 
 class AbstractNtlmAuthHandler:
-    def __init__(self, password_mgr=None, debuglevel=0):
+    def __init__(self, password_mgr=None, debuglevel=0, header='NTLM'):
 
         if password_mgr is None:
             password_mgr = urllib.request.HTTPPasswordMgr()
+        self.header = header
         self.passwd = password_mgr
         self.add_password = self.passwd.add_password
         self._debuglevel = debuglevel
@@ -35,7 +36,8 @@ class AbstractNtlmAuthHandler:
     def http_error_authentication_required(self, auth_header_field, req, fp, headers):
         auth_header_value = headers.get(auth_header_field, None)
         if auth_header_field:
-            if auth_header_value is not None and 'ntlm' in auth_header_value.lower():
+            if auth_header_value is not None and \
+                    ('ntlm' in auth_header_value.lower() or 'negotiate' in auth_header_value.lower()):
                 fp.close()
                 return self.retry_using_http_NTLM_auth(req, auth_header_field, None, headers)
 
@@ -54,7 +56,7 @@ class AbstractNtlmAuthHandler:
                 # ntlm secures a socket, so we must use the same socket for the complete handshake
             headers = dict(req.headers)
             headers.update(req.unredirected_hdrs)
-            auth = 'NTLM %s' % ntlm.create_NTLM_NEGOTIATE_MESSAGE(user, type1_flags)
+            auth = '%s %s' % (self.header, ntlm.create_NTLM_NEGOTIATE_MESSAGE(user, type1_flags))
             if req.headers.get(self.auth_header, None) == auth:
                 return None
             headers[self.auth_header] = auth
@@ -103,9 +105,14 @@ class AbstractNtlmAuthHandler:
             if m:
                 auth_header_value, = m.groups()
 
-            (ServerChallenge, NegotiateFlags) = ntlm.parse_NTLM_CHALLENGE_MESSAGE(auth_header_value[5:])
-            auth = 'NTLM %s' % ntlm.create_NTLM_AUTHENTICATE_MESSAGE(ServerChallenge, UserName, DomainName, pw,
-                                                                     NegotiateFlags)
+            if auth_header_value.startswith('NTLM'):
+                msg2 = auth_header_value[5:]
+            elif auth_header_value.startswith('Negotiate'):
+                msg2 = auth_header_value[10:]
+
+            (ServerChallenge, NegotiateFlags) = ntlm.parse_NTLM_CHALLENGE_MESSAGE(msg2)
+            auth = '%s %s' % (self.header, ntlm.create_NTLM_AUTHENTICATE_MESSAGE(ServerChallenge, UserName, DomainName, pw,
+                                                                     NegotiateFlags))
             headers[self.auth_header] = auth
             headers["Connection"] = "Close"
             headers = dict((name.title(), val) for name, val in headers.items())
