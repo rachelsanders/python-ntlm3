@@ -1,7 +1,7 @@
 python-ntlm3
 ============
 [![Build Status](https://travis-ci.org/jborean93/python-ntlm3.svg?branch=feature/add-ntlmv2)](https://travis-ci.org/jborean93/python-ntlm) [![Build status](https://ci.appveyor.com/api/projects/status/jtgb7bk5mavgysmq?svg=true)](https://ci.appveyor.com/project/jborean93/python-ntlm3)
- [![Coverage Status](https://img.shields.io/coveralls/jborean93/python-ntlm3.svg)](https://coveralls.io/r/jborean93/python-ntlm3)
+ [![Coverage Status](https://coveralls.io/repos/github/jborean93/python-ntlm3/badge.svg?branch=feature/add-ntlmv2)](https://coveralls.io/github/jborean93/python-ntlm3?branch=feature/add-ntlmv2)
 
 This is a Python 3 compatible fork of the [python-ntlm](https://code.google.com/p/python-ntlm) project. 
 

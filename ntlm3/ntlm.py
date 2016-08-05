@@ -115,7 +115,6 @@ def create_NTLM_NEGOTIATE_MESSAGE(user, type1_flags=NTLM_TYPE1_FLAGS):
 
     return msg1
 
-
 """
     [MS-NLMP] v28.0 2016-07-14
 

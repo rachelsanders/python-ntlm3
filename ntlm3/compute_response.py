@@ -44,8 +44,9 @@ class ComputeResponse():
                                     3 : Clients use only NTLMv2 authentication, and they use NTLMv2 session security if the server supports it. Domain controllers accept LM, NTLM, and NTLMv2 authentication.
                                     4 : Clients use only NTLMv2 authentication, and they use NTLMv2 session security if the server supports it. Domain controller refuses LM authentication responses, but it accepts NTLM and NTLMv2
                                     5 : Clients use only NTLMv2 authentication, and they use NTLMv2 session security if the server supports it. Domain controller refuses LM and NTLM authentication responses, but it accepts NTLMv2.
+        :param client_challenge: The client_challenge nonce for the AUTHENTICATE_MESSAGE, will generate a random one if not supplied
     """
-    def __init__(self, negotiate_flags, domain, user_name, password, server_challenge, server_target_info, ntlm_compatibility):
+    def __init__(self, negotiate_flags, domain, user_name, password, server_challenge, server_target_info, ntlm_compatibility, client_challenge=None):
         self._negotiate_flags = negotiate_flags
         self._domain = domain
         self._user_name = user_name
@@ -58,11 +59,16 @@ class ComputeResponse():
             raise Exception("Unknown ntlm_compatibility level - expecting value between 0 and 5")
         self._ntlm_compatibility = ntlm_compatibility
 
-        # Generate random 8 byte character for the client_challenge
-        client_challenge = b""
-        for i in range(8):
-            client_challenge += six.int2byte(random.getrandbits(8))
-        self._client_challenge = client_challenge
+        # Generate a random client challenge if one isn't set
+        if client_challenge is None:
+            # Generate random 8 byte character for the client_challenge otherwise
+            ran_client_challenge = b""
+            for i in range(8):
+                ran_client_challenge += six.int2byte(random.getrandbits(8))
+            self._client_challenge = ran_client_challenge
+        else:
+            self._client_challenge = client_challenge
+
 
 
     """
@@ -81,7 +87,7 @@ class ComputeResponse():
         if self._negotiate_flags & NegotiateFlags.NTLMSSP_NEGOTIATE_EXTENDED_SESSIONSECURITY and self._ntlm_compatibility < 3:
             # The compatibility level is less than 3 which means it doesn't support NTLMv2 but we want extended security so use NTLM2 which is different from NTLMv2
             # [MS-NLMP] - 3.3.1 NTLMv1 Authentication
-            response = self._client_challenge + b'\0' * 16
+            response = b'\xaa' * 8 + b'\0' * 16
 
         elif 0 <= self._ntlm_compatibility <= 1:
             response = self._get_LMv1_response(self._password, self._server_challenge)

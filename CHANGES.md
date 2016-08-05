@@ -28,6 +28,7 @@ Initial public offering.
 * More comments on each methods relating back to the MS-NLMP document pack on NTLM authentication for easier maintenance
 * Created target_info.py to handle AV_PAIRS and putting it in the target info
 * Renaming of some variables to match more closely with the Microsoft documentation, makes it easier to understand what is happening
+* Rewriting of tests to accomodate these new changes and to cover the new cases
 
 Breaking Changes:
 * parse_NTLM_CHALLENGE_MESSAGE in ntlm.py now returns the target_info values from the message, necessitating packages calling this to register this variable
