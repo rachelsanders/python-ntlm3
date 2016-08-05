@@ -103,7 +103,7 @@ class AbstractNtlmAuthHandler:
             if m:
                 auth_header_value, = m.groups()
 
-            (ServerChallenge, NegotiateFlags) = ntlm.parse_NTLM_CHALLENGE_MESSAGE(auth_header_value[5:])
+            (ServerChallenge, NegotiateFlags, TargetInfo) = ntlm.parse_NTLM_CHALLENGE_MESSAGE(auth_header_value[5:])
             auth = 'NTLM %s' % ntlm.create_NTLM_AUTHENTICATE_MESSAGE(ServerChallenge, UserName, DomainName, pw,
                                                                      NegotiateFlags)
             headers[self.auth_header] = auth
