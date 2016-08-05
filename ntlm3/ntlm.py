@@ -144,17 +144,15 @@ def parse_NTLM_CHALLENGE_MESSAGE(msg2):
     server_challenge = msg2[24:32]
     reserved = msg2[32:40]
 
-    # TargetInfo Fields
-    target_info_len = struct.unpack("<H", msg2[40:42])[0]
-    target_info_max_len = struct.unpack("<H", msg2[42:44])[0]
-    target_info_buffer_offset = struct.unpack("<I", msg2[44:48])[0]
-
-    version = msg2[48:56]
-
     if negotiate_flags & NegotiateFlags.NTLMSSP_REQUEST_TARGET:
         target_name = msg2[target_name_buffer_offset:target_name_buffer_offset + target_name_len]
 
     if negotiate_flags & NegotiateFlags.NTLMSSP_NEGOTIATE_TARGET_INFO:
+        # TargetInfo Fields
+        target_info_len = struct.unpack("<H", msg2[40:42])[0]
+        target_info_max_len = struct.unpack("<H", msg2[42:44])[0]
+        target_info_buffer_offset = struct.unpack("<I", msg2[44:48])[0]
+
         target_info_raw = msg2[target_info_buffer_offset:target_info_buffer_offset + target_info_len]
         target_info = TargetInfo(target_info_raw)
     else:

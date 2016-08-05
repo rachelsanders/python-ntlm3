@@ -18,6 +18,7 @@ import hmac
 import random
 import re
 import six
+import struct
 import time
 from ntlm3.constants import NegotiateFlags
 from ntlm3.target_info import  TargetInfo

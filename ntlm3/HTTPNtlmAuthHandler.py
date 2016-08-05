@@ -17,6 +17,7 @@ from six.moves.http_client import HTTPConnection, HTTPSConnection
 import socket
 import re
 
+from ntlm3.constants import NegotiateFlags
 from . import ntlm
 
 
@@ -46,7 +47,7 @@ class AbstractNtlmAuthHandler:
             if len(user_parts) == 1:
                 UserName = user_parts[0]
                 DomainName = ''
-                type1_flags = ntlm.NTLM_TYPE1_FLAGS & ~ntlm.NTLM_NegotiateOemDomainSupplied
+                type1_flags = ntlm.NTLM_TYPE1_FLAGS
             else:
                 DomainName = user_parts[0].upper()
                 UserName = user_parts[1]
