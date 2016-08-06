@@ -42,6 +42,10 @@ class TargetInfo(object):
     def __delitem__(self, key):
         del self.fields[key]
 
+    def dump(self):
+        for i in self.fields.keys():
+            print("%s: {%r}" % (i, self[i]))
+
     def from_string(self, data):
         attribute_type = 0xff
         while attribute_type is not TargetInfo.MSV_AV_EOL:

@@ -1,19 +1,34 @@
 import unittest
+import mock
 
 from ntlm3 import ntlm
 from ntlm3.constants import NegotiateFlags
 
-from ..utils import HexToByte, ByteToHex
+from ..utils import HexToByte
 
 user_name = 'User'
 domain = 'Domain'
 password = 'Password'
+workstation = 'COMPUTER'
+
+def mock_gethostname():
+    return workstation
+
+# Used in the client challenge, we want to return hex aa for the length as per Microsoft's example
+def mock_random(ignore):
+    hex_value = 0xaa
+    return hex_value
+
+def mock_timestamp(ignore):
+    return 1470454519 # Return 1 date for all tests
 
 # Running a test that uses the same flags as the HTTPNtlmAuthHandler to ensure consistency
 # Need a way to use the Microsoft examples as well but until the full protocal has been added, there isn't much we can do
 class Test_MessageResponsesNTLMv1(unittest.TestCase):
-    def test_negotiate_message_v1(self):
-        expected = 'TlRMTVNTUAABAAAABjIIAgQABAAoAAAACAAIACwAAAAFASgKAAAAD1VTRVJXVkEwNTQyNg=='
+
+    @mock.patch('socket.gethostname', side_effect=mock_gethostname)
+    def test_negotiate_message_v1(self, gethostname_function):
+        expected = 'TlRMTVNTUAABAAAABjIIAgQABAAoAAAACAAIACwAAAAFASgKAAAAD1VTRVJDT01QVVRFUg=='
         actual = ntlm.create_NTLM_NEGOTIATE_MESSAGE(user_name)
 
         assert actual == expected
@@ -42,8 +57,8 @@ class Test_MessageResponsesNTLMv1(unittest.TestCase):
         assert actual_flags == expected_flags
         assert actual_target_info.get_data() == expected_target_info
 
-    # Can only run v1 message without extended security as there is no way of knowing what the client_challenge or timestamp will be for other methods
-    def test_authenticate_message_v1(self):
+    @mock.patch('socket.gethostname', side_effect=mock_gethostname)
+    def test_authenticate_message_nlmt_v1(self, gethostname_function):
         server_challenge = HexToByte('de 4e ca 47 1f 87 19 84')
         server_flags = (NegotiateFlags.NTLMSSP_NEGOTIATE_UNICODE |
                     NegotiateFlags.NTLMSSP_REQUEST_TARGET |
@@ -51,8 +66,62 @@ class Test_MessageResponsesNTLMv1(unittest.TestCase):
                     NegotiateFlags.NTLMSSP_NEGOTIATE_TARGET_INFO |
                     NegotiateFlags.NTLMSSP_NEGOTIATE_VERSION)
 
-        expected = 'TlRMTVNTUAADAAAAGAAYAEgAAAAYABgAYAAAAAwADAB4AAAACAAIAIQAAAAQABAAjAAAAAAAAACcAAAABQKIAgUBKAoAAAAPIqDB' \
-                   'lPYuak8LHYGlrGPUhD18/p8e7g840E/uo8aaDG9pSchiBEHaCfb3dJMshfFuRABPAE0AQQBJAE4AVQBzAGUAcgBXAFYAQQAwADUANAAyADYA'
+        expected = 'TlRMTVNTUAADAAAAGAAYAEgAAAAYABgAYAAAAAwADAB4AAAACAAIAIQAAAAQABAAjAAAAAAAAACcAAAABQKIAgUBKAo' \
+                   'AAAAPIqDBlPYuak8LHYGlrGPUhD18/p8e7g840E/uo8aaDG9pSchiBEHaCfb3dJMshfFuRABPAE0AQQBJAE4AVQBzAG' \
+                   'UAcgBDAE8ATQBQAFUAVABFAFIA'
         actual = ntlm.create_NTLM_AUTHENTICATE_MESSAGE(server_challenge, user_name, domain, password, server_flags, ntlm_compatibility=1)
+
+        assert actual == expected
+
+    @mock.patch('socket.gethostname', side_effect=mock_gethostname)
+    def test_authenticate_message_nlmt_v1_non_unicode(self, gethostname_function):
+        server_challenge = HexToByte('de 4e ca 47 1f 87 19 84')
+        server_flags = (NegotiateFlags.NTLMSSP_REQUEST_TARGET |
+                    NegotiateFlags.NTLMSSP_NEGOTIATE_NTLM |
+                    NegotiateFlags.NTLMSSP_NEGOTIATE_TARGET_INFO |
+                    NegotiateFlags.NTLMSSP_NEGOTIATE_VERSION)
+
+        expected = 'TlRMTVNTUAADAAAAGAAYAEgAAAAYABgAYAAAAAYABgB4AAAABAAEAH4AAAAIAAgAggAAAAAAAACKAAAABQKIAgUBKA' \
+                   'oAAAAPIqDBlPYuak8LHYGlrGPUhD18/p8e7g840E/uo8aaDG9pSchiBEHaCfb3dJMshfFuRE9NQUlOVXNlckNPTVBVVEVS'
+        actual = ntlm.create_NTLM_AUTHENTICATE_MESSAGE(server_challenge, user_name, domain, password, server_flags, ntlm_compatibility=1)
+
+        assert actual == expected
+
+    @mock.patch('socket.gethostname', side_effect=mock_gethostname)
+    @mock.patch('random.getrandbits', side_effect=mock_random)
+    def test_authenticate_message_ntlm_v1_with_extended_security(self, gethostname_function, random_function):
+        server_challenge = HexToByte('de 4e ca 47 1f 87 19 84')
+        server_flags = (NegotiateFlags.NTLMSSP_NEGOTIATE_UNICODE |
+                        NegotiateFlags.NTLMSSP_REQUEST_TARGET |
+                        NegotiateFlags.NTLMSSP_NEGOTIATE_NTLM |
+                        NegotiateFlags.NTLMSSP_NEGOTIATE_EXTENDED_SESSIONSECURITY |
+                        NegotiateFlags.NTLMSSP_NEGOTIATE_TARGET_INFO |
+                        NegotiateFlags.NTLMSSP_NEGOTIATE_VERSION)
+
+        expected = 'TlRMTVNTUAADAAAAGAAYAEgAAAAYABgAYAAAAAwADAB4AAAACAAIAIQAAAAQABAAjAAAAAAAAACcAAAABQKIAgUBKAo' \
+                   'AAAAPqqqqqqqqqqoAAAAAAAAAAAAAAAAAAAAAwH67efBbtIQ50bY/V0zkP2Np99sPVnwTRABPAE0AQQBJAE4AVQBzAG' \
+                   'UAcgBDAE8ATQBQAFUAVABFAFIA'
+        actual = ntlm.create_NTLM_AUTHENTICATE_MESSAGE(server_challenge, user_name, domain, password, server_flags, ntlm_compatibility=1)
+
+        assert actual == expected
+
+    @mock.patch('socket.gethostname', side_effect=mock_gethostname)
+    @mock.patch('random.getrandbits', side_effect=mock_random)
+    @mock.patch('calendar.timegm', side_effect=mock_timestamp)
+    def test_authenticate_message_ntlm_v3(self, gethostname_function, random_function, timestamp_function):
+        server_challenge = HexToByte('de 4e ca 47 1f 87 19 84')
+        server_flags = (NegotiateFlags.NTLMSSP_NEGOTIATE_UNICODE |
+                        NegotiateFlags.NTLMSSP_REQUEST_TARGET |
+                        NegotiateFlags.NTLMSSP_NEGOTIATE_NTLM |
+                        NegotiateFlags.NTLMSSP_NEGOTIATE_EXTENDED_SESSIONSECURITY |
+                        NegotiateFlags.NTLMSSP_NEGOTIATE_TARGET_INFO |
+                        NegotiateFlags.NTLMSSP_NEGOTIATE_VERSION)
+
+        expected = 'TlRMTVNTUAADAAAAGAAYAEgAAAA0ADQAYAAAAAwADACUAAAACAAIAKAAAAAQABAAqAAAAAAAAAC4AAAABQKIAgUBKAo' \
+                   'AAAAPfPVrhszfU03N3Mizf0vlf6qqqqqqqqqqOCIgDVuzKGw0x7s4X4/0HwEBAAAAAAAAgLXgjZPv0QGqqqqqqqqqqg' \
+                   'AAAAAAAAAAAAAAAEQATwBNAEEASQBOAFUAcwBlAHIAQwBPAE0AUABVAFQARQBSAA=='
+        actual = ntlm.create_NTLM_AUTHENTICATE_MESSAGE(server_challenge, user_name, domain, password, server_flags,
+                                                       ntlm_compatibility=3)
+        print actual
 
         assert actual == expected
