@@ -35,7 +35,7 @@ class Test_MessageResponsesNTLMv1(unittest.TestCase):
 
     def test_challenge_parsing_v1(self):
         expected_challenge = HexToByte('de 4e ca 47 1f 87 19 84')
-        expected_flags = 2726920709L
+        expected_flags = 2726920709
         expected_target_info = HexToByte('02 00 04 00 4e 00 41 00 01 00 16 00 4e 00 41 00 53 00 41 '
                                          '00 4e 00 45 00 58 00 48 00 43 00 30 00 34 00 04 00 1e 00 '
                                          '6e 00 61 00 2e 00 71 00 75 00 61 00 6c 00 63 00 6f 00 6d '

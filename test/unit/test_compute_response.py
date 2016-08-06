@@ -31,9 +31,9 @@ class Test_Initialisation(unittest.TestCase):
 
         self.assertTrue('Unknown ntlm_compatibility level - expecting value between 0 and 5' in context.exception)
 
-    def test_incompatible_ntlm_version_low(self):
+    def test_incompatible_ntlm_version_high(self):
         with self.assertRaises(Exception) as context:
-            compute_response = ComputeResponse('', '', '', '', '', None, -6)
+            ComputeResponse('', '', '', '', '', None, -6)
 
         self.assertTrue('Unknown ntlm_compatibility level - expecting value between 0 and 5' in context.exception)
 
@@ -104,7 +104,6 @@ class Test_ChallengeResults(unittest.TestCase):
         expected = HexToByte('aa aa aa aa aa aa aa aa 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00')
         actual = ComputeResponse(NegotiateFlags.NTLMSSP_NEGOTIATE_EXTENDED_SESSIONSECURITY, domain, user_name, password,
                                  server_challenge, None, 1).get_lm_challenge_response()
-        print ByteToHex(actual)
 
         assert actual == expected
 
