@@ -1,4 +1,4 @@
-import unittest
+import unittest2 as unittest
 import pytest
 
 from ntlm3.U32 import U32

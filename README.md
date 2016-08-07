@@ -10,6 +10,13 @@ About this library
 
 This library handles the low-level details of NTLM authentication. Almost all users should use [requests-ntlm](https://github.com/requests/requests-ntlm) instead, which is a plugin to requests that uses this library under the hood and is way easier to use and understand. 
 
+Features
+--------
+* LM, NTLM and NTLMv1 authentication
+* NTLM1 and NTLM2 extended session security
+* Ability to set the The NTLM Compatibility level when sending messages
+* Channel Binding Tokens (Need to verify this works but potentially it si there)
+
 Installation
 ------------
 
@@ -34,3 +41,14 @@ API
 ----------
 
 TODO
+
+
+Backlog
+-------
+* Fix up NTLMv2 compute tests to work properly, need some mocking action for this
+* Verify `channel_bindings` work correctly, find a way to test this as well
+* Add support for session security signing and ecryption
+* Migrate test_ntlm.py tests to use the Microsoft examples once the above is implemented
+* Add support for MIC to enhance the security
+* Simplify the 3 messages to their own classes, make it easier to structure and retrieve info
+* Tidy up the negotiate and authenticate message flags used and the defaults set

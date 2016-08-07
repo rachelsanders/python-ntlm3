@@ -13,106 +13,28 @@
 
 import struct
 import base64
-import hashlib
-import hmac
-import random
-import re
-import binascii
-from socket import gethostname
+import socket
+from ntlm3.constants import NegotiateFlags, MessageTypes, NTLM_SIGNATURE
+from ntlm3.target_info import TargetInfo
+from ntlm3.compute_response import ComputeResponse
 
-import six
-
-from . import des
-
-NTLM_NegotiateUnicode = 0x00000001
-NTLM_NegotiateOEM = 0x00000002
-NTLM_RequestTarget = 0x00000004
-NTLM_Unknown9 = 0x00000008
-NTLM_NegotiateSign = 0x00000010
-NTLM_NegotiateSeal = 0x00000020
-NTLM_NegotiateDatagram = 0x00000040
-NTLM_NegotiateLanManagerKey = 0x00000080
-NTLM_Unknown8 = 0x00000100
-NTLM_NegotiateNTLM = 0x00000200
-NTLM_NegotiateNTOnly = 0x00000400
-NTLM_Anonymous = 0x00000800
-NTLM_NegotiateOemDomainSupplied = 0x00001000
-NTLM_NegotiateOemWorkstationSupplied = 0x00002000
-NTLM_Unknown6 = 0x00004000
-NTLM_NegotiateAlwaysSign = 0x00008000
-NTLM_TargetTypeDomain = 0x00010000
-NTLM_TargetTypeServer = 0x00020000
-NTLM_TargetTypeShare = 0x00040000
-NTLM_NegotiateExtendedSecurity = 0x00080000
-NTLM_NegotiateIdentify = 0x00100000
-NTLM_Unknown5 = 0x00200000
-NTLM_RequestNonNTSessionKey = 0x00400000
-NTLM_NegotiateTargetInfo = 0x00800000
-NTLM_Unknown4 = 0x01000000
-NTLM_NegotiateVersion = 0x02000000
-NTLM_Unknown3 = 0x04000000
-NTLM_Unknown2 = 0x08000000
-NTLM_Unknown1 = 0x10000000
-NTLM_Negotiate128 = 0x20000000
-NTLM_NegotiateKeyExchange = 0x40000000
-NTLM_Negotiate56 = 0x80000000
-
+# TODO: standardise these as they could be the same
 # we send these flags with our type 1 message
-NTLM_TYPE1_FLAGS = (NTLM_NegotiateUnicode |
-                    NTLM_NegotiateOEM |
-                    NTLM_RequestTarget |
-                    NTLM_NegotiateNTLM |
-                    NTLM_NegotiateOemDomainSupplied |
-                    NTLM_NegotiateOemWorkstationSupplied |
-                    NTLM_NegotiateAlwaysSign |
-                    NTLM_NegotiateExtendedSecurity |
-                    NTLM_NegotiateVersion |
-                    NTLM_Negotiate128 |
-                    NTLM_Negotiate56)
+NTLM_TYPE1_FLAGS = (NegotiateFlags.NTLMSSP_NEGOTIATE_OEM |
+                        NegotiateFlags.NTLMSSP_REQUEST_TARGET |
+                        NegotiateFlags.NTLMSSP_NEGOTIATE_NTLM |
+                        NegotiateFlags.NTLMSSP_NEGOTIATE_OEM_DOMAIN_SUPPLIED |
+                        NegotiateFlags.NTLMSSP_NEGOTIATE_OEM_WORKSTATION_SUPPLIED |
+                        NegotiateFlags.NTLMSSP_NEGOTIATE_EXTENDED_SESSIONSECURITY |
+                        NegotiateFlags.NTLMSSP_NEGOTIATE_VERSION)
 
-NTLM_TYPE2_FLAGS = (NTLM_NegotiateUnicode |
-                    NTLM_RequestTarget |
-                    NTLM_NegotiateNTLM |
-                    NTLM_NegotiateAlwaysSign |
-                    NTLM_NegotiateExtendedSecurity |
-                    NTLM_NegotiateTargetInfo |
-                    NTLM_NegotiateVersion |
-                    NTLM_Negotiate128 |
-                    NTLM_Negotiate56)
-
-# Indicates that this is the last AV_PAIR in the list. AvLen MUST be 0.
-# This type of information MUST be present in the AV pair list.
-NTLM_MsvAvEOL = 0
-
-# The server's NetBIOS computer name. The name MUST be in Unicode, and is not null-terminated.
-# This type of information MUST be present in the AV_pair list.
-NTLM_MsvAvNbComputerName = 1
-
-# The server's NetBIOS domain name. The name MUST be in Unicode, and is not null-terminated.
-# This type of information MUST be present in the AV_pair list.
-NTLM_MsvAvNbDomainName = 2
-
-# The server's Active Directory DNS computer name. The name MUST be in Unicode, and is not null-terminated.
-NTLM_MsvAvDnsComputerName = 3
-
-# The server's Active Directory DNS domain name. The name MUST be in Unicode, and is not null-terminated.
-NTLM_MsvAvDnsDomainName = 4
-
-# The server's Active Directory (AD) DNS forest tree name. The name MUST be in Unicode, and is not null-terminated.
-NTLM_MsvAvDnsTreeName = 5
-
-# A field containing a 32-bit value indicating server or client configuration. 0x00000001: indicates to the
-# client that the account authentication is constrained. 0x00000002: indicates that the client is providing message
-# integrity in the MIC field (section 2.2.1.3) in the AUTHENTICATE_MESSAGE.
-NTLM_MsvAvFlags = 6
-
-# A FILETIME structure ([MS-DTYP] section 2.3.1) in little-endian byte order that contains the server local time.<12>
-NTLM_MsvAvTimestamp = 7
-
-# A Restriction_Encoding structure (section 2.2.2.2). The Value field contains a structure representing
-# the integrity level of the security principal, as well as a MachineID created at computer startup
-# to identify the calling machine. <13>
-NTLM_MsAvRestrictions = 8
+# we then send these flags with our type 2 message
+NTLM_TYPE2_FLAGS = (NegotiateFlags.NTLMSSP_NEGOTIATE_UNICODE |
+                    NegotiateFlags.NTLMSSP_REQUEST_TARGET |
+                    NegotiateFlags.NTLMSSP_NEGOTIATE_NTLM |
+                    NegotiateFlags.NTLMSSP_NEGOTIATE_EXTENDED_SESSIONSECURITY |
+                    NegotiateFlags.NTLMSSP_NEGOTIATE_TARGET_INFO |
+                    NegotiateFlags.NTLMSSP_NEGOTIATE_VERSION)
 
 """
 utility functions for Microsoft NTLM authentication
@@ -134,282 +56,227 @@ Optimized Attack for NTLM2 Session Response
 http://www.blackhat.com/presentations/bh-asia-04/bh-jp-04-pdfs/bh-jp-04-seki.pdf
 """
 
+"""
+    [MS-NLMP] v28.0 2016-07-14
 
+    2.2.1.1 NEGOTIATE_MESSAGE
+    The NEGOTIATE_MESSAGE defines an NTLM Negotiate message that is sent from the client to
+    the server. This message allows the client to specify its supported NTLM options to
+    the server.
+
+    :param user: The username ('DOMAIN\\USER') string to put in our negotiate message
+    :param type1_flags: Allows you to override the default flags sent with out negotiate message
+"""
 def create_NTLM_NEGOTIATE_MESSAGE(user, type1_flags=NTLM_TYPE1_FLAGS):
-    BODY_LENGTH = 40
-    Payload_start = BODY_LENGTH  # in bytes
-    protocol = b'NTLMSSP\0'  # name
+    expected_body_length = 40
+    payload_offset = expected_body_length
 
-    type = struct.pack('<I', 1)  # type 1
+    # Gettings values in input into the message
+    domain_name = user.split('\\', 1)[0].upper().encode('ascii')
+    workstation = socket.gethostname().upper().encode('ascii')
 
-    flags = struct.pack('<I', type1_flags)
-    Workstation = gethostname().upper().encode('ascii')
-    user_parts = user.split('\\', 1)
-    DomainName = user_parts[0].upper().encode('ascii')
+    # Setting the values for the message
+    signature = NTLM_SIGNATURE
+    message_type = struct.pack('<L', MessageTypes.NTLM_NEGOTIATE)
+    negotiate_flags = struct.pack('<I', type1_flags)
 
-    # TODO - this variable isn't used
-    EncryptedRandomSessionKey = ""  # noqa
+    # DomainNameFields - 8 bytes
+    domain_name_len = struct.pack('<H', len(domain_name))
+    domain_name_max_len = struct.pack('<H', len(domain_name))
+    domain_name_buffer_offset = struct.pack('<I', payload_offset)
+    payload_offset += len(domain_name)
 
-    WorkstationLen = struct.pack('<H', len(Workstation))
-    WorkstationMaxLen = struct.pack('<H', len(Workstation))
-    WorkstationBufferOffset = struct.pack('<I', Payload_start)
-    Payload_start += len(Workstation)
-    DomainNameLen = struct.pack('<H', len(DomainName))
-    DomainNameMaxLen = struct.pack('<H', len(DomainName))
-    DomainNameBufferOffset = struct.pack('<I', Payload_start)
-    Payload_start += len(DomainName)
-    ProductMajorVersion = struct.pack('<B', 5)
-    ProductMinorVersion = struct.pack('<B', 1)
-    ProductBuild = struct.pack('<H', 2600)
-    VersionReserved1 = struct.pack('<B', 0)
-    VersionReserved2 = struct.pack('<B', 0)
-    VersionReserved3 = struct.pack('<B', 0)
-    NTLMRevisionCurrent = struct.pack('<B', 15)
+    # WorkstationFields - 8 bytes
+    workstation_len = struct.pack('<H', len(workstation))
+    workstation_max_len = struct.pack('<H', len(workstation))
+    workstation_buffer_offset = struct.pack('<I', payload_offset)
+    payload_offset += len(workstation)
 
-    msg1 = protocol + type + flags + \
-        DomainNameLen + DomainNameMaxLen + DomainNameBufferOffset + \
-        WorkstationLen + WorkstationMaxLen + WorkstationBufferOffset + \
-        ProductMajorVersion + ProductMinorVersion + ProductBuild + \
-        VersionReserved1 + VersionReserved2 + VersionReserved3 + NTLMRevisionCurrent
+    # Version Fields - 8 bytes
+    # TODO: Get the major and minor version of Windows instead of using default values
+    product_major_version = struct.pack('<B', 5)
+    product_minor_version = struct.pack('<B', 1)
+    product_build = struct.pack('<H', 2600)
+    version_reserved = b'\0' * 3
+    ntlm_revision_current = struct.pack('<B', 15)
 
-    assert BODY_LENGTH == len(msg1), "BODY_LENGTH: %d != msg1: %d" % (BODY_LENGTH, len(msg1))
+    # Payload - variable length
+    payload = domain_name + workstation
 
-    msg1 += Workstation + DomainName
+    # Bring the header values together into 1 message
+    msg1 = signature + message_type + negotiate_flags + \
+        domain_name_len + domain_name_max_len + domain_name_buffer_offset + \
+        workstation_len + workstation_max_len + workstation_buffer_offset + \
+        product_major_version + product_minor_version + product_build + \
+        version_reserved + ntlm_revision_current
+
+    assert expected_body_length == len(msg1), "BODY_LENGTH: %d != msg1: %d" % (expected_body_length, len(msg1))
+
+    # Adding the payload data to the message
+    msg1 += payload
     msg1 = base64.b64encode(msg1)
+
     return msg1
 
+"""
+    [MS-NLMP] v28.0 2016-07-14
 
+    2.2.1.2 CHALLENGE_MESSAGE
+    The CHALLENGE_MESSAGE defines an NTLM challenge message that is sent from the server to
+    the client. The CHALLENGE_MESSAGE is used by the server to challenge the client to prove
+    its identity, For connection-oriented requests, the CHALLENGE_MESSAGE generated by the
+    server is in response to the NEGOTIATE_MESSAGE from the client.
+
+    :param msg2: The base64 encoded message (CHALLENGE_MESSAGE) received from the server after sending our NEGOTIATE_MESSAGE
+"""
 def parse_NTLM_CHALLENGE_MESSAGE(msg2):
-    ""
     msg2 = base64.b64decode(msg2)
 
-    # TODO - this variable isn't used
-    Signature = msg2[0:8]  # noqa
+    # Getting the values from the CHALLENGE_MESSAGE
+    signature = msg2[0:8]
+    assert signature == NTLM_SIGNATURE
 
-    msg_type = struct.unpack("<I", msg2[8:12])[0]
-    assert (msg_type == 2)
+    message_type = struct.unpack("<I", msg2[8:12])[0]
+    assert message_type == MessageTypes.NTLM_CHALLENGE
 
-    # TODO - this variable isn't used
-    TargetNameLen = struct.unpack("<H", msg2[12:14])[0]  # noqa
+    # TargetName Fields
+    target_name_len = struct.unpack("<H", msg2[12:14])[0]
+    target_name_max_len = struct.unpack("<H", msg2[14:16])[0]
+    target_name_buffer_offset = struct.unpack("<I", msg2[16:20])[0]
 
-    TargetNameMaxLen = struct.unpack("<H", msg2[14:16])[0]
-    TargetNameOffset = struct.unpack("<I", msg2[16:20])[0]
+    negotiate_flags = struct.unpack("<I", msg2[20:24])[0]
+    server_challenge = msg2[24:32]
+    reserved = msg2[32:40]
 
-    # TODO - this variable isn't used
-    TargetName = msg2[TargetNameOffset:TargetNameOffset + TargetNameMaxLen]  # noqa
+    if negotiate_flags & NegotiateFlags.NTLMSSP_REQUEST_TARGET:
+        target_name = msg2[target_name_buffer_offset:target_name_buffer_offset + target_name_len]
 
-    NegotiateFlags = struct.unpack("<I", msg2[20:24])[0]
-    ServerChallenge = msg2[24:32]
+    if negotiate_flags & NegotiateFlags.NTLMSSP_NEGOTIATE_TARGET_INFO:
+        # TargetInfo Fields
+        target_info_len = struct.unpack("<H", msg2[40:42])[0]
+        target_info_max_len = struct.unpack("<H", msg2[42:44])[0]
+        target_info_buffer_offset = struct.unpack("<I", msg2[44:48])[0]
 
-    # TODO - this variable isn't used
-    Reserved = msg2[32:40]  # noqa
+        target_info_raw = msg2[target_info_buffer_offset:target_info_buffer_offset + target_info_len]
+        target_info = TargetInfo(target_info_raw)
+    else:
+        target_info = None
 
-    if NegotiateFlags & NTLM_NegotiateTargetInfo:
-        TargetInfoLen = struct.unpack("<H", msg2[40:42])[0]
+    return (server_challenge, negotiate_flags, target_info)
 
-        # TODO - this variable isn't used
-        TargetInfoMaxLen = struct.unpack("<H", msg2[42:44])[0]  # noqa
+"""
+    [MS-NLMP] v28.0 2016-07-14
 
-        TargetInfoOffset = struct.unpack("<I", msg2[44:48])[0]
-        TargetInfo = msg2[TargetInfoOffset:TargetInfoOffset + TargetInfoLen]
-        i = 0
-        TimeStamp = '\0' * 8
-        while (i < TargetInfoLen):
-            AvId = struct.unpack("<H", TargetInfo[i:i + 2])[0]
-            AvLen = struct.unpack("<H", TargetInfo[i + 2:i + 4])[0]
-            AvValue = TargetInfo[i + 4:i + 4 + AvLen]
-            i = i + 4 + AvLen
-            if AvId == NTLM_MsvAvTimestamp:
-                # TODO - this variable isn't used
-                TimeStamp = AvValue  # noqa
-                # ~ print AvId, AvValue.decode('utf-16')
-    return (ServerChallenge, NegotiateFlags)
+    2.2.1.3 AUTHENTICATE_MESSAGE
+    The AUTHENTICATE_MESSAGE defines an NTLM authenticate message that is sent from the
+    client to the server after the CHALLENGE_MESSAGE is processed by the client.
 
+    :param server_challenge: The server_challenge nonce returned in the CHALLENGE_MESSAGE. Used in the auth computation
+    :param user: The user
+    :param domain: The domain
+    :param password: The password
+    :param server_negotiate_flags: The negotiate_flags info of the server returned in the CHALLENGE_MESSAGE. Used to determine what auth level to use
+    :param server_target_info: The target_info data (target_info.py class) of the server returned in the CHALLENGE_MESSAGE. Used in NTLMv2 messages
+    :param ntlm_compatibility: The Lan Manger Compatibility Level to use (default: 3) - See compute_response.py for more info
+    :param channel_bindings: The Channel Binding Tokens to add to the AV_PAIR structure (NTLMv2 Messages only) - Default is to not add anything
+"""
+def create_NTLM_AUTHENTICATE_MESSAGE(server_challenge, user, domain, password, server_negotiate_flags, server_target_info=None, ntlm_compatibility=3, channel_bindings=None):
+    expected_body_length = 72
+    payload_offset = expected_body_length
 
-def create_NTLM_AUTHENTICATE_MESSAGE(nonce, user, domain, password, NegotiateFlags):
+    # Getting values in input into the message
+    if (server_negotiate_flags & NegotiateFlags.NTLMSSP_NEGOTIATE_UNICODE):
+        domain_name = domain.upper().encode('utf-16-le')
+        user_name = user.encode('utf-16-le')
+        workstation = socket.gethostname().upper().encode('utf-16-le')
 
-    is_unicode = NegotiateFlags & NTLM_NegotiateUnicode
-    is_NegotiateExtendedSecurity = NegotiateFlags & NTLM_NegotiateExtendedSecurity
+        # TODO: Implement signing and sealing of NTLM messages
+        encrypted_random_session_key = "".encode('utf-16-le')
+    else:
+        domain_name = domain.upper().encode('ascii')
+        user_name = user.encode('ascii')
+        workstation = socket.gethostname().upper().encode('ascii')
 
-    flags = struct.pack('<I', NTLM_TYPE2_FLAGS)
+        # TODO: Implement signing and sealing of NTLM messages
+        encrypted_random_session_key = b""
 
-    BODY_LENGTH = 72
-    Payload_start = BODY_LENGTH  # in bytes
+    compute_response = ComputeResponse(server_negotiate_flags, domain_name, user_name, password, server_challenge, server_target_info, ntlm_compatibility)
+    # Get the nt_challenge_response based on the NTLM version used and the flags set. This will also return the target_info sent to the client used when calculating the lm_challenge_response
+    (nt_challenge_response, client_target_info) = compute_response.get_nt_challenge_response(channel_bindings)
 
-    Workstation = gethostname().upper().encode('ascii')
-    DomainName = domain.upper().encode('ascii')
-    UserName = user.encode('ascii')
-    EncryptedRandomSessionKey = b""
-    if is_unicode:
-        Workstation = gethostname().upper().encode('utf-16-le')
-        DomainName = domain.upper().encode('utf-16-le')
-        UserName = user.encode('utf-16-le')
-        EncryptedRandomSessionKey = "".encode('utf-16-le')
-    LmChallengeResponse = calc_resp(create_LM_hashed_password_v1(password), nonce)
-    NtChallengeResponse = calc_resp(create_NT_hashed_password_v1(password), nonce)
+    # Get the lm_challenge_response based on the NTLM version used and the flags set.
+    lm_challenge_response = compute_response.get_lm_challenge_response()
 
-    if is_NegotiateExtendedSecurity:
-        pwhash = create_NT_hashed_password_v1(password, UserName, DomainName)
-        ClientChallenge = b""
-        for i in range(8):
-            ClientChallenge += six.int2byte(random.getrandbits(8))
+    # Setting the values for the message
+    signature = NTLM_SIGNATURE
+    message_type = struct.pack('<I', MessageTypes.NTLM_AUTHENTICATE)
+    negotiate_flags = struct.pack('<I', NTLM_TYPE2_FLAGS)
 
-        (NtChallengeResponse, LmChallengeResponse) = ntlm2sr_calc_resp(pwhash, nonce,
-                                                                       ClientChallenge)  # ='\x39 e3 f4 cd 59 c5 d8 60')
-    Signature = b'NTLMSSP\0'
-    MessageType = struct.pack('<I', 3)  # type 3
+    # LmChallengeResponseFields - 8 bytes
+    lm_challenge_response_len = struct.pack('<H', len(lm_challenge_response))
+    lm_challenge_response_max_len = struct.pack('<H', len(lm_challenge_response))
+    lm_challenge_response_buffer_offset = struct.pack('<I', payload_offset)
+    payload_offset += len(lm_challenge_response)
 
-    DomainNameLen = struct.pack('<H', len(DomainName))
-    DomainNameMaxLen = struct.pack('<H', len(DomainName))
-    DomainNameOffset = struct.pack('<I', Payload_start)
-    Payload_start += len(DomainName)
+    # NtChallengeResponseFields - 8 bytes
+    nt_challenge_response_len = struct.pack('<H', len(nt_challenge_response))
+    nt_challenge_response_max_len = struct.pack('<H', len(nt_challenge_response))
+    nt_challenge_response_buffer_offset = struct.pack('<I', payload_offset)
+    payload_offset += len(nt_challenge_response)
 
-    UserNameLen = struct.pack('<H', len(UserName))
-    UserNameMaxLen = struct.pack('<H', len(UserName))
-    UserNameOffset = struct.pack('<I', Payload_start)
-    Payload_start += len(UserName)
+    # DomainNameFields - 8 bytes
+    domain_name_len = struct.pack('<H', len(domain_name))
+    domain_name_max_len = struct.pack('<H', len(domain_name))
+    domain_name_buffer_offset = struct.pack('<I', payload_offset)
+    payload_offset += len(domain_name)
 
-    WorkstationLen = struct.pack('<H', len(Workstation))
-    WorkstationMaxLen = struct.pack('<H', len(Workstation))
-    WorkstationOffset = struct.pack('<I', Payload_start)
-    Payload_start += len(Workstation)
+    # UserNameFields - 8 bytes
+    user_name_len = struct.pack('<H', len(user_name))
+    user_name_max_len = struct.pack('<H', len(user_name))
+    user_name_buffer_offset = struct.pack('<I', payload_offset)
+    payload_offset += len(user_name)
 
-    LmChallengeResponseLen = struct.pack('<H', len(LmChallengeResponse))
-    LmChallengeResponseMaxLen = struct.pack('<H', len(LmChallengeResponse))
-    LmChallengeResponseOffset = struct.pack('<I', Payload_start)
-    Payload_start += len(LmChallengeResponse)
+    # WorkstatonFields - 8 bytes
+    workstation_len = struct.pack('<H', len(workstation))
+    workstation_max_len = struct.pack('<H', len(workstation))
+    workstation_buffer_offset = struct.pack('<I', payload_offset)
+    payload_offset += len(workstation)
 
-    NtChallengeResponseLen = struct.pack('<H', len(NtChallengeResponse))
-    NtChallengeResponseMaxLen = struct.pack('<H', len(NtChallengeResponse))
-    NtChallengeResponseOffset = struct.pack('<I', Payload_start)
-    Payload_start += len(NtChallengeResponse)
+    # EncryptedRandomSessionKeyFields - 8 bytes
+    encrypted_random_session_key_len = struct.pack('<H', len(encrypted_random_session_key))
+    encrypted_random_session_key_max_len = struct.pack('<H', len(encrypted_random_session_key))
+    encrypted_random_session_key_buffer_offset = struct.pack('<I', payload_offset)
+    payload_offset += len(encrypted_random_session_key)
 
-    EncryptedRandomSessionKeyLen = struct.pack('<H', len(EncryptedRandomSessionKey))
-    EncryptedRandomSessionKeyMaxLen = struct.pack('<H', len(EncryptedRandomSessionKey))
-    EncryptedRandomSessionKeyOffset = struct.pack('<I', Payload_start)
-    Payload_start += len(EncryptedRandomSessionKey)
-    NegotiateFlags = flags
+    # Version Fields - 8 bytes
+    # TODO: Get the major and minor version of Windows instead of using default values
+    product_major_version = struct.pack('<B', 5)
+    product_minor_version = struct.pack('<B', 1)
+    product_build = struct.pack('<H', 2600)
+    version_reserved = b'\0' * 3
+    ntlm_revision_current = struct.pack('<B', 15)
 
-    ProductMajorVersion = struct.pack('<B', 5)
-    ProductMinorVersion = struct.pack('<B', 1)
-    ProductBuild = struct.pack('<H', 2600)
-    VersionReserved1 = struct.pack('<B', 0)
-    VersionReserved2 = struct.pack('<B', 0)
-    VersionReserved3 = struct.pack('<B', 0)
-    NTLMRevisionCurrent = struct.pack('<B', 15)
+    # TODO - Add support for message signing and sealing to utilise the MIC value
+    mic = struct.pack('<IIII', 0, 0, 0, 0)
 
-    # TODO - This variable isn't used
-    MIC = struct.pack('<IIII', 0, 0, 0, 0)  # noqa
+    # Payload - variable length
+    payload = lm_challenge_response + nt_challenge_response + domain_name + \
+        user_name + workstation + encrypted_random_session_key
 
-    msg3 = Signature + MessageType + \
-        LmChallengeResponseLen + LmChallengeResponseMaxLen + LmChallengeResponseOffset + \
-        NtChallengeResponseLen + NtChallengeResponseMaxLen + NtChallengeResponseOffset + \
-        DomainNameLen + DomainNameMaxLen + DomainNameOffset + \
-        UserNameLen + UserNameMaxLen + UserNameOffset + \
-        WorkstationLen + WorkstationMaxLen + WorkstationOffset + \
-        EncryptedRandomSessionKeyLen + EncryptedRandomSessionKeyMaxLen + EncryptedRandomSessionKeyOffset + \
-        NegotiateFlags + \
-        ProductMajorVersion + ProductMinorVersion + ProductBuild + \
-        VersionReserved1 + VersionReserved2 + VersionReserved3 + NTLMRevisionCurrent
+    # Bring the header values together into 1 message
+    msg3 = signature + message_type + \
+        lm_challenge_response_len + lm_challenge_response_max_len + lm_challenge_response_buffer_offset + \
+        nt_challenge_response_len + nt_challenge_response_max_len + nt_challenge_response_buffer_offset + \
+        domain_name_len + domain_name_max_len + domain_name_buffer_offset + \
+        user_name_len + user_name_max_len + user_name_buffer_offset + \
+        workstation_len + workstation_max_len + workstation_buffer_offset + \
+        encrypted_random_session_key_len + encrypted_random_session_key_max_len + encrypted_random_session_key_buffer_offset + \
+        negotiate_flags + \
+        product_major_version + product_minor_version + product_build + \
+        version_reserved + ntlm_revision_current
 
-    assert BODY_LENGTH == len(msg3), "BODY_LENGTH: %d != msg3: %d" % (BODY_LENGTH, len(msg3))
+    assert expected_body_length == len(msg3), "BODY_LENGTH: %d != msg3: %d" % (expected_body_length, len(msg3))
 
-    Payload = DomainName + UserName + Workstation + LmChallengeResponse + NtChallengeResponse + EncryptedRandomSessionKey
-    msg3 += Payload
+    msg3 += payload
     msg3 = base64.b64encode(msg3)
     return msg3
-
-
-def calc_resp(password_hash, server_challenge):
-    """calc_resp generates the LM response given a 16-byte password hash and the
-        challenge from the Type-2 message.
-        @param password_hash
-            16-byte password hash
-        @param server_challenge
-            8-byte challenge from Type-2 message
-        returns
-            24-byte buffer to contain the LM response upon return
-    """
-    # padding with zeros to make the hash 21 bytes long
-    password_hash += b'\0' * (21 - len(password_hash))
-
-    res = b''
-    dobj = des.DES(password_hash[0:7])
-    res = res + dobj.encrypt(server_challenge[0:8])
-
-    dobj = des.DES(password_hash[7:14])
-    res = res + dobj.encrypt(server_challenge[0:8])
-
-    dobj = des.DES(password_hash[14:21])
-    res = res + dobj.encrypt(server_challenge[0:8])
-    return res
-
-
-def ComputeResponse(ResponseKeyNT, ResponseKeyLM, ServerChallenge, ServerName, ClientChallenge=b'\xaa' * 8,
-                    Time=b'\0' * 8):
-    LmChallengeResponse = hmac.new(ResponseKeyLM, ServerChallenge + ClientChallenge).digest() + ClientChallenge
-
-    Responserversion = b'\x01'
-    HiResponserversion = b'\x01'
-    temp = Responserversion + HiResponserversion + b'\0' * 6 + Time + ClientChallenge + b'\0' * 4 + ServerChallenge + b'\0' * 4
-    NTProofStr = hmac.new(ResponseKeyNT, ServerChallenge + temp).digest()
-    NtChallengeResponse = NTProofStr + temp
-
-    # TODO - This variable isn't used
-    SessionBaseKey = hmac.new(ResponseKeyNT, NTProofStr).digest()  # noqa
-
-    return (NtChallengeResponse, LmChallengeResponse)
-
-
-def ntlm2sr_calc_resp(ResponseKeyNT, ServerChallenge, ClientChallenge=b'\xaa' * 8):
-
-    LmChallengeResponse = ClientChallenge + b'\0' * 16
-    sess = hashlib.md5(ServerChallenge + ClientChallenge).digest()
-    NtChallengeResponse = calc_resp(ResponseKeyNT, sess[0:8])
-    return (NtChallengeResponse, LmChallengeResponse)
-
-
-def create_LM_hashed_password_v1(passwd):
-    """create LanManager hashed password"""
-
-    # if the passwd provided is already a hash, we just return the first half
-    if re.match(r'^[\w]{32}:[\w]{32}$', passwd):
-        return binascii.unhexlify(passwd.split(':')[0])
-
-    # fix the password length to 14 bytes
-    passwd = passwd.upper()
-    lm_pw = passwd + '\0' * (14 - len(passwd))
-    lm_pw = passwd[0:14]
-
-    # do hash
-    magic_str = b"KGS!@#$%"  # page 57 in [MS-NLMP]
-
-    res = b''
-    dobj = des.DES(lm_pw[0:7])
-    res = res + dobj.encrypt(magic_str)
-
-    dobj = des.DES(lm_pw[7:14])
-    res = res + dobj.encrypt(magic_str)
-
-    return res
-
-
-def create_NT_hashed_password_v1(passwd, user=None, domain=None):
-    "create NT hashed password"
-    # if the passwd provided is already a hash, we just return the second half
-    if re.match(r'^[\w]{32}:[\w]{32}$', passwd):
-        return binascii.unhexlify(passwd.split(':')[1])
-
-    digest = hashlib.new('md4', passwd.encode('utf-16le')).digest()
-    return digest
-
-
-def create_NT_hashed_password_v2(passwd, user, domain):
-    "create NT hashed password"
-    digest = create_NT_hashed_password_v1(passwd)
-
-    return hmac.new(digest, (user.upper() + domain).encode('utf-16le')).digest()
-
-
-def create_sessionbasekey(password):
-    return hashlib.new('md4', create_NT_hashed_password_v1(password)).digest()

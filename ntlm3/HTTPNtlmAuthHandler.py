@@ -17,6 +17,7 @@ from six.moves.http_client import HTTPConnection, HTTPSConnection
 import socket
 import re
 
+from ntlm3.constants import NegotiateFlags
 from . import ntlm
 
 
@@ -46,7 +47,7 @@ class AbstractNtlmAuthHandler:
             if len(user_parts) == 1:
                 UserName = user_parts[0]
                 DomainName = ''
-                type1_flags = ntlm.NTLM_TYPE1_FLAGS & ~ntlm.NTLM_NegotiateOemDomainSupplied
+                type1_flags = ntlm.NTLM_TYPE1_FLAGS
             else:
                 DomainName = user_parts[0].upper()
                 UserName = user_parts[1]
@@ -90,7 +91,8 @@ class AbstractNtlmAuthHandler:
 
             r.begin()
 
-            r._safe_read(int(r.getheader('content-length')))
+            a = r.getheader('Content-Length')
+            #r._safe_read(int(r.getheader('Content-Length')))
             if r.getheader('set-cookie'):
                 # this is important for some web applications that store authentication-related info in cookies (it took a long time to figure out)
                 headers['Cookie'] = r.getheader('set-cookie')
@@ -103,7 +105,7 @@ class AbstractNtlmAuthHandler:
             if m:
                 auth_header_value, = m.groups()
 
-            (ServerChallenge, NegotiateFlags) = ntlm.parse_NTLM_CHALLENGE_MESSAGE(auth_header_value[5:])
+            (ServerChallenge, NegotiateFlags, TargetInfo) = ntlm.parse_NTLM_CHALLENGE_MESSAGE(auth_header_value[5:])
             auth = 'NTLM %s' % ntlm.create_NTLM_AUTHENTICATE_MESSAGE(ServerChallenge, UserName, DomainName, pw,
                                                                      NegotiateFlags)
             headers[self.auth_header] = auth

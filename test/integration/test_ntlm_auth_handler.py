@@ -1,4 +1,4 @@
-import unittest
+import unittest2 as unittest
 
 from six.moves import urllib
 
