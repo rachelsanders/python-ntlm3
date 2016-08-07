@@ -1,7 +1,7 @@
 import unittest2 as unittest # for compatiblity with older version of python
 import mock
 
-from ..utils import HexToByte, ByteToHex
+from ..utils import HexToByte
 
 from ntlm3.compute_response import ComputeResponse
 from ntlm3.target_info import TargetInfo
@@ -216,7 +216,6 @@ class Test_ChallengeResults(unittest.TestCase):
             NegotiateFlags.NTLMSSP_ANOYNMOUS, domain, user_name,
             password, server_challenge, test_target_info,
             3, client_challenge).get_nt_challenge_response()
-        print ByteToHex(actual_response)
 
         assert actual_response == expected_response
         assert actual_target_info == expected_target_info
