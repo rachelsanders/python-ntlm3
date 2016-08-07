@@ -199,3 +199,24 @@ class Test_ChallengeResults(unittest.TestCase):
 
         assert actual_response == expected_response
         assert actual_target_info == expected_target_info
+
+    # This test is different from the other Microsoft examples, they don't have an example where the AV_TIMESTAMP pair is present, using our own expected results
+    def test_nt_v2_response_with_timestamp_av_pair(self):
+        test_target_info = target_info
+        test_target_info[TargetInfo.MSV_AV_TIMESTAMP] = HexToByte('00 00 00 00 00 00 00 00')
+        expected_response = HexToByte('fb 4e c5 8d 66 2a 1e bc 3b 55 24 97 1d 77 20 7e'
+                                      '01 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00'
+                                      'aa aa aa aa aa aa aa aa 00 00 00 00 02 00 0c 00'
+                                      '44 00 6f 00 6d 00 61 00 69 00 6e 00 01 00 0c 00'
+                                      '53 00 65 00 72 00 76 00 65 00 72 00 07 00 08 00'
+                                      '00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00')
+        expected_target_info = test_target_info
+
+        (actual_response, actual_target_info) = ComputeResponse(
+            NegotiateFlags.NTLMSSP_ANOYNMOUS, domain, user_name,
+            password, server_challenge, test_target_info,
+            3, client_challenge).get_nt_challenge_response()
+        print ByteToHex(actual_response)
+
+        assert actual_response == expected_response
+        assert actual_target_info == expected_target_info
