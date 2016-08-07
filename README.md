@@ -12,10 +12,10 @@ This library handles the low-level details of NTLM authentication. Almost all us
 
 Features
 --------
-* LM, NTLM and NTLMv1 authentication
+* LM, NTLM and NTLMv2 authentication
 * NTLM1 and NTLM2 extended session security
-* Ability to set the The NTLM Compatibility level when sending messages
-* Channel Binding Tokens (Need to verify this works but potentially it si there)
+* Set the The NTLM Compatibility level when sending messages
+* Channel Binding Tokens support, need to pass in the SHA256 hash of the certificate for it to work
 
 Installation
 ------------
@@ -45,10 +45,8 @@ TODO
 
 Backlog
 -------
-* Fix up NTLMv2 compute tests to work properly, need some mocking action for this
-* Verify `channel_bindings` work correctly, find a way to test this as well
-* Add support for session security signing and ecryption
+* Add support for session security signing and encryption
 * Migrate test_ntlm.py tests to use the Microsoft examples once the above is implemented
-* Add support for MIC to enhance the security
+* Add support for MIC to enhanced the security
 * Simplify the 3 messages to their own classes, make it easier to structure and retrieve info
 * Tidy up the negotiate and authenticate message flags used and the defaults set

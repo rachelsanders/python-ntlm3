@@ -176,13 +176,38 @@ def parse_NTLM_CHALLENGE_MESSAGE(msg2):
     :param domain: The domain
     :param password: The password
     :param server_negotiate_flags: The negotiate_flags info of the server returned in the CHALLENGE_MESSAGE. Used to determine what auth level to use
-    :param server_target_info: The target_info data (target_info.py class) of the server returned in the CHALLENGE_MESSAGE. Used in NTLMv2 messages
-    :param ntlm_compatibility: The Lan Manger Compatibility Level to use (default: 3) - See compute_response.py for more info
-    :param channel_bindings: The Channel Binding Tokens to add to the AV_PAIR structure (NTLMv2 Messages only) - Default is to not add anything
+    :param server_target_info: The target_info data (target_info.py class) of the server returned in the CHALLENGE_MESSAGE. Used in NTLMv2 messages only
+    :param kwargs: An optional dictionary (with default values) which can be used to configure
+
+                    ntlm_compatibility      - The Lan Manager Compatibility Level to use withe the auth message - Default 3
+                                                This is set by an Administrator in the registry key
+                                                'HKLM\SYSTEM\CurrentControlSet\Control\Lsa\LmCompatibilityLevel'
+                                                The values correspond to the following;
+                                                0 : Clients use LM and NTLM authentication, but they never use NTLMv2 session security.
+                                                    Domain controllers accept LM, NTLM, and NTLMv2 authentication.
+                                                1 : Clients use LM and NTLM authentication, and they use NTLMv2 session security if the
+                                                    server supports it. Domain controllers accept LM, NTLM, and NTLMv2 authentication.
+                                                2 : Clients use only NTLM authentication, and they use NTLMv2 (NTLM2 in this code) session
+                                                    security if the server supports it. Domain controller accepts LM, NTLM, and NTLMv2 authentication.
+                                                3 : Clients use only NTLMv2 authentication, and they use NTLMv2 session security if the server
+                                                    supports it. Domain controllers accept LM, NTLM, and NTLMv2 authentication.
+                                                4 : Clients use only NTLMv2 authentication, and they use NTLMv2 session security if the server
+                                                    supports it. Domain controller refuses LM authentication responses, but it accepts NTLM and NTLMv2
+                                                5 : Clients use only NTLMv2 authentication, and they use NTLMv2 session security if the server
+                                                    supports it. Domain controller refuses LM and NTLM authentication responses, but it accepts NTLMv2.
+
+                    server_certificate_hash - The SHA256 hash string of the server certificate (DER encoded) NTLM is authenticating to. This is used to add
+                                              to the gss_channel_bindings_struct for Channel Binding Tokens support. If none is passed through then python-ntlm3
+                                              will not use Channel Binding Tokens when authenticating with the server which could cause issues if it is set to
+                                              only authenticate when these are present. This is only used for NTLMv2 authentication.
 """
-def create_NTLM_AUTHENTICATE_MESSAGE(server_challenge, user, domain, password, server_negotiate_flags, server_target_info=None, ntlm_compatibility=3, channel_bindings=None):
+def create_NTLM_AUTHENTICATE_MESSAGE(server_challenge, user, domain, password, server_negotiate_flags, server_target_info=None, **kwargs):
     expected_body_length = 72
     payload_offset = expected_body_length
+
+    # Setting the default values for ntlm_compatibility and server_certificate_hash if it isn't set already
+    ntlm_compatibility = kwargs.get('ntlm_compatibility', 3)
+    server_certificate_hash = kwargs.get('server_certificate_hash', None)
 
     # Getting values in input into the message
     if (server_negotiate_flags & NegotiateFlags.NTLMSSP_NEGOTIATE_UNICODE):
@@ -202,7 +227,7 @@ def create_NTLM_AUTHENTICATE_MESSAGE(server_challenge, user, domain, password, s
 
     compute_response = ComputeResponse(server_negotiate_flags, domain_name, user_name, password, server_challenge, server_target_info, ntlm_compatibility)
     # Get the nt_challenge_response based on the NTLM version used and the flags set. This will also return the target_info sent to the client used when calculating the lm_challenge_response
-    (nt_challenge_response, client_target_info) = compute_response.get_nt_challenge_response(channel_bindings)
+    (nt_challenge_response, client_target_info) = compute_response.get_nt_challenge_response(server_certificate_hash)
 
     # Get the lm_challenge_response based on the NTLM version used and the flags set.
     lm_challenge_response = compute_response.get_lm_challenge_response()

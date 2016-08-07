@@ -124,6 +124,13 @@ class Test_HashResults(unittest.TestCase):
 
         assert actual == expected
 
+    # No example is explicitly set in MS-NLMP, using a random certificate hash and checking with the expected outcome
+    def test_channel_bindings_value(self):
+        expected = HexToByte('6E A1 9D F0 66 DA 46 22 05 1F 9C 4F 92 C6 DF 74')
+        actual = compute_response._get_channel_bindings_value('E3CA49271E5089CC48CE82109F1324F41DBEDDC29A777410C738F7868C4FF405')
+
+        assert actual == expected
+
 # Really are the same tests as above with the same expected results but this tests the logic of the lm and nt response method instead of the computation itself
 class Test_ChallengeResults(unittest.TestCase):
     def test_lm_v1_response(self):

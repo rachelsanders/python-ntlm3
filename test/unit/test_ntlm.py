@@ -24,7 +24,7 @@ def mock_timestamp(ignore):
 
 # Running a test that uses the same flags as the HTTPNtlmAuthHandler to ensure consistency
 # Need a way to use the Microsoft examples as well but until the full protocol has been added, there isn't much we can do
-class Test_MessageResponsesNTLMv1(unittest.TestCase):
+class Test_MessageResponses(unittest.TestCase):
 
     @mock.patch('socket.gethostname', side_effect=mock_gethostname)
     def test_negotiate_message_v1(self, gethostname_function):
@@ -58,7 +58,7 @@ class Test_MessageResponsesNTLMv1(unittest.TestCase):
         assert actual_target_info.get_data() == expected_target_info
 
     @mock.patch('socket.gethostname', side_effect=mock_gethostname)
-    def test_authenticate_message_nlmt_v1(self, gethostname_function):
+    def test_authenticate_message_ntlm_v1(self, gethostname_function):
         server_challenge = HexToByte('de 4e ca 47 1f 87 19 84')
         server_flags = (NegotiateFlags.NTLMSSP_NEGOTIATE_UNICODE |
                     NegotiateFlags.NTLMSSP_REQUEST_TARGET |
@@ -69,12 +69,13 @@ class Test_MessageResponsesNTLMv1(unittest.TestCase):
         expected = 'TlRMTVNTUAADAAAAGAAYAEgAAAAYABgAYAAAAAwADAB4AAAACAAIAIQAAAAQABAAjAAAAAAAAACcAAAABQKIAgUBKAo' \
                    'AAAAPIqDBlPYuak8LHYGlrGPUhD18/p8e7g840E/uo8aaDG9pSchiBEHaCfb3dJMshfFuRABPAE0AQQBJAE4AVQBzAG' \
                    'UAcgBDAE8ATQBQAFUAVABFAFIA'
-        actual = ntlm.create_NTLM_AUTHENTICATE_MESSAGE(server_challenge, user_name, domain, password, server_flags, ntlm_compatibility=1)
+        kwargs = {'ntlm_compatibility': 1}
+        actual = ntlm.create_NTLM_AUTHENTICATE_MESSAGE(server_challenge, user_name, domain, password, server_flags, **kwargs)
 
         assert actual.decode('ascii') == expected
 
     @mock.patch('socket.gethostname', side_effect=mock_gethostname)
-    def test_authenticate_message_nlmt_v1_non_unicode(self, gethostname_function):
+    def test_authenticate_message_ntlm_v1_non_unicode(self, gethostname_function):
         server_challenge = HexToByte('de 4e ca 47 1f 87 19 84')
         server_flags = (NegotiateFlags.NTLMSSP_REQUEST_TARGET |
                     NegotiateFlags.NTLMSSP_NEGOTIATE_NTLM |
@@ -83,7 +84,8 @@ class Test_MessageResponsesNTLMv1(unittest.TestCase):
 
         expected = 'TlRMTVNTUAADAAAAGAAYAEgAAAAYABgAYAAAAAYABgB4AAAABAAEAH4AAAAIAAgAggAAAAAAAACKAAAABQKIAgUBKA' \
                    'oAAAAPIqDBlPYuak8LHYGlrGPUhD18/p8e7g840E/uo8aaDG9pSchiBEHaCfb3dJMshfFuRE9NQUlOVXNlckNPTVBVVEVS'
-        actual = ntlm.create_NTLM_AUTHENTICATE_MESSAGE(server_challenge, user_name, domain, password, server_flags, ntlm_compatibility=1)
+        kwargs = {'ntlm_compatibility': 1}
+        actual = ntlm.create_NTLM_AUTHENTICATE_MESSAGE(server_challenge, user_name, domain, password, server_flags, **kwargs)
 
         assert actual.decode('ascii') == expected
 
@@ -101,7 +103,8 @@ class Test_MessageResponsesNTLMv1(unittest.TestCase):
         expected = 'TlRMTVNTUAADAAAAGAAYAEgAAAAYABgAYAAAAAwADAB4AAAACAAIAIQAAAAQABAAjAAAAAAAAACcAAAABQKIAgUBKAo' \
                    'AAAAPqqqqqqqqqqoAAAAAAAAAAAAAAAAAAAAAwH67efBbtIQ50bY/V0zkP2Np99sPVnwTRABPAE0AQQBJAE4AVQBzAG' \
                    'UAcgBDAE8ATQBQAFUAVABFAFIA'
-        actual = ntlm.create_NTLM_AUTHENTICATE_MESSAGE(server_challenge, user_name, domain, password, server_flags, ntlm_compatibility=1)
+        kwargs = {'ntlm_compatibility': 1}
+        actual = ntlm.create_NTLM_AUTHENTICATE_MESSAGE(server_challenge, user_name, domain, password, server_flags, **kwargs)
 
         assert actual.decode('ascii') == expected
 
@@ -120,7 +123,30 @@ class Test_MessageResponsesNTLMv1(unittest.TestCase):
         expected = 'TlRMTVNTUAADAAAAGAAYAEgAAAA0ADQAYAAAAAwADACUAAAACAAIAKAAAAAQABAAqAAAAAAAAAC4AAAABQKIAgUBKAo' \
                    'AAAAP92azWG+BEw04Zln4xD4Jiqqqqqqqqqqqw1htUrupCrqUKRoCz3VcAAEBAAAAAAAAgLXgjZPv0QGqqqqqqqqqqg' \
                    'AAAAAAAAAAAAAAAEQATwBNAEEASQBOAFUAcwBlAHIAQwBPAE0AUABVAFQARQBSAA=='
+        # No need to set ntlm_compatibility as it defaults to 3, aka NTLMv2
+        actual = ntlm.create_NTLM_AUTHENTICATE_MESSAGE(server_challenge, user_name, domain, password, server_flags)
+
+        assert actual.decode('ascii') == expected
+
+    @mock.patch('socket.gethostname', side_effect=mock_gethostname)
+    @mock.patch('random.getrandbits', side_effect=mock_random)
+    @mock.patch('calendar.timegm', side_effect=mock_timestamp)
+    def test_authenticate_message_with_cbt(self, gethostname_function, random_function, timestamp_function):
+        server_challenge = HexToByte('de 4e ca 47 1f 87 19 84')
+        server_flags = (NegotiateFlags.NTLMSSP_REQUEST_TARGET |
+                        NegotiateFlags.NTLMSSP_NEGOTIATE_NTLM |
+                        NegotiateFlags.NTLMSSP_NEGOTIATE_EXTENDED_SESSIONSECURITY |
+                        NegotiateFlags.NTLMSSP_NEGOTIATE_TARGET_INFO |
+                        NegotiateFlags.NTLMSSP_NEGOTIATE_VERSION |
+                        NegotiateFlags.NTLMSSP_NEGOTIATE_UNICODE)
+
+        # This base64 string has the certificate hash in the expected value, take caution when updating this
+        expected = 'TlRMTVNTUAADAAAAGAAYAEgAAABIAEgAYAAAAAwADACoAAAACAAIALQAAAAQABAAvAAAAAAAAADMAAAABQKIAgUBKAo' \
+                   'AAAAP92azWG+BEw04Zln4xD4JiqqqqqqqqqqqYpznaFI0QS2xc3/mBTxLpAEBAAAAAAAAgLXgjZPv0QGqqqqqqqqqqg' \
+                   'AAAAAKABAAbqGd8GbaRiIFH5xPksbfdAAAAAAAAAAARABPAE0AQQBJAE4AVQBzAGUAcgBDAE8ATQBQAFUAVABFAFIA'
+        # Using a random hash, doesn't really matter in this mock as long as it comes through in the expected message
+        kwargs = {'ntlm_compatibility' : 3, 'server_certificate_hash' : 'E3CA49271E5089CC48CE82109F1324F41DBEDDC29A777410C738F7868C4FF405'}
         actual = ntlm.create_NTLM_AUTHENTICATE_MESSAGE(server_challenge, user_name, domain, password, server_flags,
-                                                       ntlm_compatibility=3)
+                                                       **kwargs)
 
         assert actual.decode('ascii') == expected
