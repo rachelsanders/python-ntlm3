@@ -355,13 +355,18 @@ class ComputeResponse():
 
         # Initialise the GssChannelBindingsStruct and add the certificate_digest to the application_data field
         gss_channel_bindings = GssChannelBindingsStruct()
-        gss_channel_bindings[gss_channel_bindings.APPLICATION_DATA] = 'tls-server-end-point:' + certificate_digest
+        gss_channel_bindings[gss_channel_bindings.APPLICATION_DATA] = 'tls-server-end-point:'.encode() + certificate_digest
 
         # Get the gss_channel_bindings_struct and create an MD5 hash
         channel_bindings_struct_data = gss_channel_bindings.get_data()
         channel_bindings_hash = hashlib.md5(channel_bindings_struct_data).hexdigest()
 
-        return bytearray.fromhex(channel_bindings_hash)
+        try:
+            cbt_value = bytearray.fromhex(channel_bindings_hash)
+        except TypeError:
+            # Work-around for Python 2.6 bug
+            cbt_value = bytearray.fromhex(unicode(channel_bindings_hash))
+        return bytes(cbt_value)
 
     def _get_windows_timestamp(self):
         # Get Windows Date time, 100 nanoseconds since 1601-01-01 in a 64 bit structure

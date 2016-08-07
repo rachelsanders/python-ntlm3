@@ -41,9 +41,9 @@ class GssChannelBindingsStruct(object):
         self.fields[self.ACCEPTOR_ADDRTYPE] = 0
         self.fields[self.ACCEPTOR_ADDRESS_LENGTH] = 0
         self.fields[self.APPLICATION_DATA_LENGTH] = 0
-        self.fields[self.INITIATOR_ADDRESS] = ''
-        self.fields[self.ACCEPTOR_ADDRESS] = ''
-        self.fields[self.APPLICATION_DATA] = ''
+        self.fields[self.INITIATOR_ADDRESS] = b''
+        self.fields[self.ACCEPTOR_ADDRESS] = b''
+        self.fields[self.APPLICATION_DATA] = b''
 
     def __setitem__(self, key, value):
         self.fields[key] = value
