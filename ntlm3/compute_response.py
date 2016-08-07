@@ -48,8 +48,8 @@ class ComputeResponse():
     """
     def __init__(self, negotiate_flags, domain, user_name, password, server_challenge, server_target_info, ntlm_compatibility, client_challenge=None):
         self._negotiate_flags = negotiate_flags
-        self._domain = domain
-        self._user_name = user_name
+        self._domain = domain.decode()
+        self._user_name = user_name.decode()
         self._password = password
         self._server_challenge = server_challenge
         self._server_target_info = server_target_info
@@ -137,8 +137,7 @@ class ComputeResponse():
                 target_info = self._server_target_info
 
             if target_info[TargetInfo.MSV_AV_TIMESTAMP] is None:
-                # Get Windows Date time, 100 nanoseconds since 1601-01-01 in a 64 bit structure
-                timestamp = struct.pack('<q', (116444736000000000 + calendar.timegm(time.gmtime()) * 10000000))
+                timestamp = self._get_windows_timestamp()
             else:
                 timestamp = target_info[TargetInfo.MSV_AV_TIMESTAMP][1]
                 # TODO: Need to calculate the MIC when this flag is present
@@ -146,7 +145,7 @@ class ComputeResponse():
             if channel_bindings != None:
                 target_info[TargetInfo.MSV_AV_CHANNEL_BINDINGS] = channel_bindings
 
-            (response, target_info) = self._get_NTLMv2_response(self._domain, self._user_name, self._password, self._server_challenge, self._client_challenge, timestamp, target_info)
+            response = self._get_NTLMv2_response(self._domain, self._user_name, self._password, self._server_challenge, self._client_challenge, timestamp, target_info)
 
         return response, target_info
 
@@ -281,39 +280,45 @@ class ComputeResponse():
     def _get_NTLMv2_response(self, domain, user_name, password, server_challenge, client_challenge, timestamp, target_info):
         # Response field - 16 bytes
         nt_hash = self._ntowfv2(password, user_name, domain)
+        temp = self._get_NTLMv2_temp(timestamp, client_challenge, target_info)
+        nt_proof_str = hmac.new(nt_hash, (server_challenge + temp)).digest()
 
-        """
-            2.2.2.7 NTLMv2_CLIENT_CHALLENGE - variable length
-            The NTLMv2_CLIENT_CHALLENGE structure defines the client challenge in
-            the AUTHENTICATE_MESSAGE. This strucutre is used only when NTLM v2
-            authentication is configured and is transpoted in the NTLMv2_RESPONSE
-            structure.
+        return nt_proof_str + temp
 
-            The method to create this structure is defined in 3.3.2 NTLMv2 Authentication.
-            The target_info variable corresponds to the ServerName variable used in that
-            documentation. This is in reality a lot more than just the ServerName and contains
-            the AV_PAIRS we need to transport with the message like Channel Binding tokens
-            and others. By default this will be the target_info returned from the
-            CHALLENGE_MESSAGE plus MSV_AV_CHANNEL_BINDINGS if specified otherwise it is
-            a new target_info set with MSV_AV_TIMESTAMP to the current time.
-        """
+    """
+        [MS-NLMP] v28.0 2016-07-14
+
+        2.2.2.7 NTLMv2_CLIENT_CHALLENGE - variable length
+        The NTLMv2_CLIENT_CHALLENGE structure defines the client challenge in
+        the AUTHENTICATE_MESSAGE. This strucutre is used only when NTLM v2
+        authentication is configured and is transported in the NTLMv2_RESPONSE
+        structure.
+
+        The method to create this structure is defined in 3.3.2 NTLMv2 Authentication.
+        In this method this variable is known as the temp value. The target_info variable
+        corresponds to the ServerName variable used in that documentation. This is in
+        reality a lot more than just the ServerName and contains the AV_PAIRS structure
+        we need to transport with the message like Channel Binding tokens and others.
+        By default this will be the target_info returned from the CHALLENGE_MESSAGE plus
+        MSV_AV_CHANNEL_BINDINGS if specified otherwise it is a new target_info set with
+        MSV_AV_TIMESTAMP to the current time.
+    """
+    def _get_NTLMv2_temp(self, timestamp, client_challenge, target_info):
         resp_type = b'\1'
         hi_resp_type = b'\1'
         reserved1 = b'\0' * 2
         reserved2 = b'\0' * 4
         reserved3 = b'\0' * 4
-        reserved4 = b'\0' * 4 # This byte is not in the strucutre defined in 2.2.2.7 but is in the computation guide, works with it present
+        reserved4 = b'\0' * 4  # This byte is not in the strucutre defined in 2.2.2.7 but is in the computation guide, works with it present
 
         temp = resp_type + hi_resp_type + reserved1 + \
-            reserved2 + \
-            timestamp + \
-            client_challenge + \
-            reserved3 + \
-            target_info.get_data() + reserved4
+               reserved2 + \
+               timestamp + \
+               client_challenge + \
+               reserved3 + \
+               target_info.get_data() + reserved4
 
-        nt_proof_str = hmac.new(nt_hash, (server_challenge + temp)).digest()
-
-        return nt_proof_str + temp, target_info
+        return temp
 
     """_calc_resp generates the LM response given a 16-byte password hash and the
         challenge from the Type-2 message.
@@ -339,3 +344,9 @@ class ComputeResponse():
         dobj = des.DES(password_hash[14:21])
         res = res + dobj.encrypt(server_challenge[0:8])
         return res
+
+    def _get_windows_timestamp(self):
+        # Get Windows Date time, 100 nanoseconds since 1601-01-01 in a 64 bit structure
+        timestamp = struct.pack('<q', (116444736000000000 + calendar.timegm(time.gmtime()) * 10000000))
+
+        return timestamp

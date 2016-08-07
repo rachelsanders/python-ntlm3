@@ -1,4 +1,4 @@
-import unittest
+import unittest2 as unittest
 import mock
 
 from ntlm3 import ntlm
@@ -23,7 +23,7 @@ def mock_timestamp(ignore):
     return 1470454519 # Return 1 date for all tests
 
 # Running a test that uses the same flags as the HTTPNtlmAuthHandler to ensure consistency
-# Need a way to use the Microsoft examples as well but until the full protocal has been added, there isn't much we can do
+# Need a way to use the Microsoft examples as well but until the full protocol has been added, there isn't much we can do
 class Test_MessageResponsesNTLMv1(unittest.TestCase):
 
     @mock.patch('socket.gethostname', side_effect=mock_gethostname)
@@ -31,7 +31,7 @@ class Test_MessageResponsesNTLMv1(unittest.TestCase):
         expected = 'TlRMTVNTUAABAAAABjIIAgQABAAoAAAACAAIACwAAAAFASgKAAAAD1VTRVJDT01QVVRFUg=='
         actual = ntlm.create_NTLM_NEGOTIATE_MESSAGE(user_name)
 
-        assert actual == expected
+        assert actual.decode('ascii') == expected
 
     def test_challenge_parsing_v1(self):
         expected_challenge = HexToByte('de 4e ca 47 1f 87 19 84')
@@ -71,7 +71,7 @@ class Test_MessageResponsesNTLMv1(unittest.TestCase):
                    'UAcgBDAE8ATQBQAFUAVABFAFIA'
         actual = ntlm.create_NTLM_AUTHENTICATE_MESSAGE(server_challenge, user_name, domain, password, server_flags, ntlm_compatibility=1)
 
-        assert actual == expected
+        assert actual.decode('ascii') == expected
 
     @mock.patch('socket.gethostname', side_effect=mock_gethostname)
     def test_authenticate_message_nlmt_v1_non_unicode(self, gethostname_function):
@@ -85,7 +85,7 @@ class Test_MessageResponsesNTLMv1(unittest.TestCase):
                    'oAAAAPIqDBlPYuak8LHYGlrGPUhD18/p8e7g840E/uo8aaDG9pSchiBEHaCfb3dJMshfFuRE9NQUlOVXNlckNPTVBVVEVS'
         actual = ntlm.create_NTLM_AUTHENTICATE_MESSAGE(server_challenge, user_name, domain, password, server_flags, ntlm_compatibility=1)
 
-        assert actual == expected
+        assert actual.decode('ascii') == expected
 
     @mock.patch('socket.gethostname', side_effect=mock_gethostname)
     @mock.patch('random.getrandbits', side_effect=mock_random)
@@ -103,25 +103,24 @@ class Test_MessageResponsesNTLMv1(unittest.TestCase):
                    'UAcgBDAE8ATQBQAFUAVABFAFIA'
         actual = ntlm.create_NTLM_AUTHENTICATE_MESSAGE(server_challenge, user_name, domain, password, server_flags, ntlm_compatibility=1)
 
-        assert actual == expected
+        assert actual.decode('ascii') == expected
 
     @mock.patch('socket.gethostname', side_effect=mock_gethostname)
     @mock.patch('random.getrandbits', side_effect=mock_random)
     @mock.patch('calendar.timegm', side_effect=mock_timestamp)
-    def test_authenticate_message_ntlm_v3(self, gethostname_function, random_function, timestamp_function):
+    def test_authenticate_message_ntlm_v2(self, gethostname_function, random_function, timestamp_function):
         server_challenge = HexToByte('de 4e ca 47 1f 87 19 84')
-        server_flags = (NegotiateFlags.NTLMSSP_NEGOTIATE_UNICODE |
-                        NegotiateFlags.NTLMSSP_REQUEST_TARGET |
+        server_flags = (NegotiateFlags.NTLMSSP_REQUEST_TARGET |
                         NegotiateFlags.NTLMSSP_NEGOTIATE_NTLM |
                         NegotiateFlags.NTLMSSP_NEGOTIATE_EXTENDED_SESSIONSECURITY |
                         NegotiateFlags.NTLMSSP_NEGOTIATE_TARGET_INFO |
-                        NegotiateFlags.NTLMSSP_NEGOTIATE_VERSION)
+                        NegotiateFlags.NTLMSSP_NEGOTIATE_VERSION |
+                        NegotiateFlags.NTLMSSP_NEGOTIATE_UNICODE)
 
         expected = 'TlRMTVNTUAADAAAAGAAYAEgAAAA0ADQAYAAAAAwADACUAAAACAAIAKAAAAAQABAAqAAAAAAAAAC4AAAABQKIAgUBKAo' \
-                   'AAAAPfPVrhszfU03N3Mizf0vlf6qqqqqqqqqqOCIgDVuzKGw0x7s4X4/0HwEBAAAAAAAAgLXgjZPv0QGqqqqqqqqqqg' \
+                   'AAAAP92azWG+BEw04Zln4xD4Jiqqqqqqqqqqqw1htUrupCrqUKRoCz3VcAAEBAAAAAAAAgLXgjZPv0QGqqqqqqqqqqg' \
                    'AAAAAAAAAAAAAAAEQATwBNAEEASQBOAFUAcwBlAHIAQwBPAE0AUABVAFQARQBSAA=='
         actual = ntlm.create_NTLM_AUTHENTICATE_MESSAGE(server_challenge, user_name, domain, password, server_flags,
                                                        ntlm_compatibility=3)
-        print actual
 
-        assert actual == expected
+        assert actual.decode('ascii') == expected

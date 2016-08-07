@@ -200,7 +200,7 @@ def create_NTLM_AUTHENTICATE_MESSAGE(server_challenge, user, domain, password, s
         # TODO: Implement signing and sealing of NTLM messages
         encrypted_random_session_key = b""
 
-    compute_response = ComputeResponse(server_negotiate_flags, domain, user_name, password, server_challenge, server_target_info, ntlm_compatibility)
+    compute_response = ComputeResponse(server_negotiate_flags, domain_name, user_name, password, server_challenge, server_target_info, ntlm_compatibility)
     # Get the nt_challenge_response based on the NTLM version used and the flags set. This will also return the target_info sent to the client used when calculating the lm_challenge_response
     (nt_challenge_response, client_target_info) = compute_response.get_nt_challenge_response(channel_bindings)
 

@@ -91,7 +91,8 @@ class AbstractNtlmAuthHandler:
 
             r.begin()
 
-            r._safe_read(int(r.getheader('content-length')))
+            a = r.getheader('Content-Length')
+            #r._safe_read(int(r.getheader('Content-Length')))
             if r.getheader('set-cookie'):
                 # this is important for some web applications that store authentication-related info in cookies (it took a long time to figure out)
                 headers['Cookie'] = r.getheader('set-cookie')
