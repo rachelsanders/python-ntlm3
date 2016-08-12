@@ -31,56 +31,46 @@ class ComputeResponse():
         Constructor for the response computations. This class will compute the various
         nt and lm challenge responses.
 
-        :param domain: The domain name
-        :param user_name: The username
-        :param password: The password
-        :param server_challenge: The server_challenge nonce from the CHALLENGE_MESSAGE
-        :param server_target_info: The target_info value returned from the CHALLENGE_MESSAGE
-        :param ntlm_compatibility: The NTLM Compatibility level to use with the message. See ntlm.py create_NTLM_AUTHENTICATE_MESSAGE() for more details
-        :param client_challenge: The client_challenge nonce for the AUTHENTICATE_MESSAGE, will generate a random one if not supplied
+        :param user_name: The user name of the user we are trying to authenticate with
+        :param password: The password of the user we are trying to authenticate with
+        :param domain_name: The domain name of the user account we are authenticated with, default is None
+        :param challenge_message: A ChallengeMessage object that was received from the server after the negotiate_message
+        :param ntlm_compatibility: The Lan Manager Compatibility Level, used to determine what NTLM auth version to use, see Ntlm in ntlm.py for more details
     """
-    def __init__(self, negotiate_flags, domain, user_name, password, server_challenge, server_target_info, ntlm_compatibility, client_challenge=None):
-        self._negotiate_flags = negotiate_flags
-        self._domain = domain.decode()
+    def __init__(self, user_name, password, domain_name, challenge_message, ntlm_compatibility):
         self._user_name = user_name.decode()
         self._password = password
-        self._server_challenge = server_challenge
-        self._server_target_info = server_target_info
-
-        # Check that the ntlm_compatibility level is set to a valid value
-        if (ntlm_compatibility < 0) or (ntlm_compatibility > 5):
-            raise Exception("Unknown ntlm_compatibility level - expecting value between 0 and 5")
+        self._domain_name = domain_name.decode()
+        self._challenge_message = challenge_message
+        self._negotiate_flags = challenge_message.negotiate_flags
+        self._server_challenge = challenge_message.server_challenge
+        self._server_target_info = challenge_message.target_info
         self._ntlm_compatibility = ntlm_compatibility
 
-        # Generate a random client challenge if one isn't set
-        if client_challenge is None:
-            # Generate random 8 byte character for the client_challenge otherwise
-            ran_client_challenge = b""
-            for i in range(8):
-                ran_client_challenge += six.int2byte(random.getrandbits(8))
-            self._client_challenge = ran_client_challenge
-        else:
-            self._client_challenge = client_challenge
+        random_client_challenge = b""
+        for i in range(8):
+            random_client_challenge += six.int2byte(random.getrandbits(8))
+        self._client_challenge = random_client_challenge
 
 
-
-    """
+    def get_lm_challenge_response(self):
+        """
         [MS-NLMP] v28.0 2016-07-14
 
         3.3.1 - NTLM v1 Authentication
         3.3.2 - NTLM v2 Authentication
 
-        :return: nt_challenge_response (LmChallengeResponse) - The LM response to the server challenge. Computed by the client
         This method returns the LmChallengeResponse key based on the ntlm_compatibility chosen
         and the target_info supplied by the CHALLENGE_MESSAGE. It is quite different from what
-        is set in the document as it combines the NTLM v1, NTLM2 and NTLM v2 methods into one
-        and calls separate methods based on the ntlm_compatibility chosen.
-    """
-    def get_lm_challenge_response(self):
+        is set in the document as it combines the NTLMv1, NTLM2 and NTLMv2 methods into one
+        and calls separate methods based on the ntlm_compatibility flag chosen.
+
+        :return: response (LmChallengeResponse) - The LM response to the server challenge. Computed by the client
+        """
         if self._negotiate_flags & NegotiateFlags.NTLMSSP_NEGOTIATE_EXTENDED_SESSIONSECURITY and self._ntlm_compatibility < 3:
             # The compatibility level is less than 3 which means it doesn't support NTLMv2 but we want extended security so use NTLM2 which is different from NTLMv2
             # [MS-NLMP] - 3.3.1 NTLMv1 Authentication
-            response = b'\xaa' * 8 + b'\0' * 16
+            response = self._client_challenge + b'\0' * 16
 
         elif 0 <= self._ntlm_compatibility <= 1:
             response = self._get_LMv1_response(self._password, self._server_challenge)
@@ -88,32 +78,28 @@ class ComputeResponse():
             # Based on the compatibility level we don't want to use LM responses
             response = self._get_NTLMv1_response(self._password, self._server_challenge)
         else:
-            # [MS-NLMP] - 3.3.2 NTLMv2 Authentication
-            response = self._get_LMv2_response(self._domain, self._user_name, self._password, self._server_challenge, self._client_challenge)
+            response = self._get_LMv2_response(self._user_name, self._password, self._domain_name, self._server_challenge, self._client_challenge)
 
         return response
 
-    """
+    def get_nt_challenge_response(self, server_certificate_hash):
+        """
         [MS-NLMP] v28.0 2016-07-14
 
         3.3.1 - NTLM v1 Authentication
         3.3.2 - NTLM v2 Authentication
 
-        :param server_certificate_hash: The SHA256 hash of the server certificate NTLM is authenticating to. This is used to add to the gss_channel_bindings_struct
-                                        for Channel Binding Tokens. If none is passed through then python-ntlm3 will not use Channel Binding Tokens when authenticating
-                                        with the server which could cause issues if it is set to only authenticate when these are present. This is only used for NTLMv2
-                                        authentication.
-        :return: nt_challenge_response (NTChallengeResponse) - The NT response to the server challenge.
-                    Computed by the client
-                 client_target_info (ServerName) - The AV_PAIR structure set in the NTChallengeResponse.
-
-        This method returns the NTChallengeResponse key based on the ntlm_compatibility chosen
+        This method returns the NtChallengeResponse key based on the ntlm_compatibility chosen
         and the target_info supplied by the CHALLENGE_MESSAGE. It is quite different from what
-        is set in the document as it combines the NTLM v1, NTLM2 and NTLM v2 methods into one
-        and calls separate methods based on the ntlm_compatibility chosen.
-    """
-    def get_nt_challenge_response(self, server_certificate_hash=None):
-        # Create blank target_info variable in case it isn't NTLMv2
+        is set in the document as it combines the NTLMv1, NTLM2 and NTLMv2 methods into one
+        and calls separate methods based on the ntlm_compatibility flag chosen.
+
+        :param server_certificate_hash: The SHA256 hash of the server certificate (DER encoded) NTLM is authenticated to.
+                                        Used in Channel Binding Tokens if present, default value is None. See
+                                        AuthenticateMessage in messages.py for more details
+        :return: response (NtChallengeResponse) - The NT response to the server challenge. Computed by the client
+        """
+
         target_info = None
 
         if self._negotiate_flags & NegotiateFlags.NTLMSSP_NEGOTIATE_EXTENDED_SESSIONSECURITY and self._ntlm_compatibility < 3:
@@ -124,7 +110,6 @@ class ComputeResponse():
         elif 0 <= self._ntlm_compatibility < 3:
             response = self._get_NTLMv1_response(self._password, self._server_challenge)
         else:
-            # [MS-NLMP] - 3.3.2 NTLMv2 Authentication
             if self._server_target_info is None:
                 target_info = TargetInfo()
             else:
@@ -134,26 +119,30 @@ class ComputeResponse():
                 timestamp = self._get_windows_timestamp()
             else:
                 timestamp = target_info[TargetInfo.MSV_AV_TIMESTAMP][1]
-                # TODO: Need to calculate the MIC when this flag is present
 
             if server_certificate_hash != None:
                 channel_bindings_hash = self._get_channel_bindings_value(server_certificate_hash)
                 target_info[TargetInfo.MSV_AV_CHANNEL_BINDINGS] = channel_bindings_hash
 
-            response = self._get_NTLMv2_response(self._domain, self._user_name, self._password, self._server_challenge, self._client_challenge, timestamp, target_info)
+            response = self._get_NTLMv2_response(self._user_name, self._password, self._domain_name,
+                                                 self._server_challenge, self._client_challenge, timestamp, target_info)
 
-        return response, target_info
+        return response
 
 
-    """
+    def _lmowfv1(self, password):
+        """
         [MS-NLMP] v28.0 2016-07-14
 
         3.3.1 NTLM v1 Authentication
-        Note: Same function as LMOWFv1 in document
-    """
-    def _lmowfv1(self, password):
-        """create LanManager hashed password"""
+        Same function as LMOWFv1 in document to create a one way hash of the password. Only
+        used in NTLMv1 auth without session security
 
+        :param password: The password of the user we are trying to authenticate with
+        :return res: A Lan Manager hash of the password supplied
+        """
+
+        # TODO: is the below still needed, can we make a test for it?
         # if the password provided is already a hash, we just return the first half
         if re.match(r'^[\w]{32}:[\w]{32}$', password):
             return binascii.unhexlify(password.split(':')[0])
@@ -164,7 +153,7 @@ class ComputeResponse():
         lm_pw = password[0:14]
 
         # do hash
-        magic_str = b"KGS!@#$%"  # page 57 in [MS-NLMP]
+        magic_str = b"KGS!@#$%"  # page 56 in [MS-NLMP v28.0]
 
         res = b''
         dobj = des.DES(lm_pw[0:7])
@@ -175,14 +164,19 @@ class ComputeResponse():
 
         return res
 
-    """
+    def _ntowfv1(self, password):
+        """
         [MS-NLMP] v28.0 2016-07-14
 
         3.3.1 NTLM v1 Authentication
-        Note: Same function as NTOWFv1 in document
-    """
-    def _ntowfv1(self, password):
-        "create NT hashed password"
+        Same function as NTOWFv1 in document to create a one way hash of the password. Only
+        used in NTLMv1 auth without session security
+
+        :param password: The password of the user we are trying to authenticate with
+        :return digest: An NT hash of the password supplied
+        """
+
+        # TODO: Is this really needed, can we write a test if it is?
         # if the password provided is already a hash, we just return the second half
         if re.match(r'^[\w]{32}:[\w]{32}$', password):
             return binascii.unhexlify(password.split(':')[1])
@@ -190,62 +184,85 @@ class ComputeResponse():
         digest = hashlib.new('md4', password.encode('utf-16le')).digest()
         return digest
 
-    """
+    def _ntowfv2(self, user_name, password, domain_name):
+        """
         [MS-NLMP] v28.0 2016-07-14
 
-        3.3.2 NTLM v1 Authentication
-        Note: Same function as LMOWFv2 and NTOWFv2 in document
-    """
-    def _ntowfv2(self, password, user_name, domain):
-        "create NT hashed password"
+        3.3.2 NTLM v2 Authentication
+        Same function as NTOWFv2 (and LMOWFv2) in document to create a one way hash of the password.
+        This combines some extra security features over the v1 calculations used in NTLMv2 auth.
+
+        :param user_name: The user name of the user we are trying to authenticate with
+        :param password: The password of the user we are trying to authenticate with
+        :param domain_name: The domain name of the user account we are authenticated with
+        :return digest: An NT hash of the parameters supplied
+        """
         digest = self._ntowfv1(password)
+        digest = hmac.new(digest, (user_name.upper() + domain_name).encode('utf-16le')).digest()
 
-        return hmac.new(digest, (user_name.upper() + domain).encode('utf-16le')).digest()
+        return digest
 
-    """
+
+    def _get_LMv1_response(self, password, server_challenge):
+        """
         [MS-NLMP] v28.0 2016-07-14
 
         2.2.2.3 LM_RESPONSE
         The LM_RESPONSE structure defines the NTLM v1 authentication LmChallengeResponse
         in the AUTHENTICATE_MESSAGE. This response is used only when NTLM v1
         authentication is configured.
-    """
-    def _get_LMv1_response(self, password, server_challenge):
+
+        :param password: The password of the user we are trying to authenticate with
+        :param server_challenge: A random 8-byte response generated by the server in the CHALLENGE_MESSAGE
+        :return response: LmChallengeResponse to the server challenge
+        """
         lm_hash = self._lmowfv1(password)
         response = self._calc_resp(lm_hash, server_challenge)
 
         return response
 
-    """
+    def _get_LMv2_response(self, user_name, password, domain_name, server_challenge, client_challenge):
+        """
         [MS-NLMP] v28.0 2016-07-14
 
         2.2.2.4 LMv2_RESPONSE
         The LMv2_RESPONSE structure defines the NTLM v2 authentication LmChallengeResponse
         in the AUTHENTICATE_MESSAGE. This response is used only when NTLM v2
         authentication is configured.
-    """
-    def _get_LMv2_response(self, domain, user_name, password, server_challenge, client_challenge):
-        nt_hash = self._ntowfv2(password, user_name, domain)
+
+        :param user_name: The user name of the user we are trying to authenticate with
+        :param password: The password of the user we are trying to authenticate with
+        :param domain_name: The domain name of the user account we are authenticated with
+        :param server_challenge: A random 8-byte response generated by the server in the CHALLENGE_MESSAGE
+        :param client_challenge: A random 8-byte response generated by the client for the AUTHENTICATE_MESSAGE
+        :return response: LmChallengeResponse to the server challenge
+        """
+        nt_hash = self._ntowfv2(user_name, password, domain_name)
         lm_hash = hmac.new(nt_hash, (server_challenge + client_challenge)).digest()
         response = lm_hash + client_challenge
 
         return response
 
-    """
+    def _get_NTLMv1_response(self, password, server_challenge):
+        """
         [MS-NLMP] v28.0 2016-07-14
 
         2.2.2.6 NTLM v1 Response: NTLM_RESPONSE
         The NTLM_RESPONSE strucutre defines the NTLM v1 authentication NtChallengeResponse
         in the AUTHENTICATE_MESSAGE. This response is only used when NTLM v1 authentication
         is configured.
-    """
-    def _get_NTLMv1_response(self, password, server_challenge):
+
+        :param password: The password of the user we are trying to authenticate with
+        :param server_challenge: A random 8-byte response generated by the server in the CHALLENGE_MESSAGE
+        :return response: NtChallengeResponse to the server_challenge
+        """
         ntlm_hash = self._ntowfv1(password)
         response = self._calc_resp(ntlm_hash, server_challenge)
 
         return response
 
-    """
+    def _get_NTLM2_response(self, password, server_challenge, client_challenge):
+        """
         [MS-NLMP] v28.0 2016-07-14
 
         This name is really misleading as it isn't NTLM v2 authentication rather
@@ -253,15 +270,20 @@ class ComputeResponse():
         to a value < 3 (No NTLMv2 auth) but the NTLMSSP_NEGOTIATE_EXTENDED_SESSIONSECURITY
         flag is set in the negotiate flags section. The documentation for computing this
         value is on page 56 under section 3.3.1 NTLM v1 Authentication
-    """
-    def _get_NTLM2_response(self, password, server_challenge, client_challenge):
+
+        :param password: The password of the user we are trying to authenticate with
+        :param server_challenge: A random 8-byte response generated by the server in the CHALLENGE_MESSAGE
+        :param client_challenge: A random 8-byte response generated by the client for the AUTHENTICATE_MESSAGE
+        :return response: NtChallengeResponse to the server_challenge
+        """
         ntlm_hash = self._ntowfv1(password)
         nt_session_hash = hashlib.md5(server_challenge + client_challenge).digest()[:8]
         response = self._calc_resp(ntlm_hash, nt_session_hash[0:8])
 
         return response
 
-    """
+    def _get_NTLMv2_response(self, user_name, password, domain_name, server_challenge, client_challenge, timestamp, target_info):
+        """
         [MS-NLMP] v28.0 2016-07-14
 
         2.2.2.8 NTLM V2 Response: NTLMv2_RESPONSE
@@ -270,21 +292,31 @@ class ComputeResponse():
         is configured.
 
         The guide on how this is computed is in 3.3.2 NTLM v2 Authentication.
-    """
-    def _get_NTLMv2_response(self, domain, user_name, password, server_challenge, client_challenge, timestamp, target_info):
-        # Response field - 16 bytes
-        nt_hash = self._ntowfv2(password, user_name, domain)
+
+        :param user_name: The user name of the user we are trying to authenticate with
+        :param password: The password of the user we are trying to authenticate with
+        :param domain_name: The domain name of the user account we are authenticated with
+        :param server_challenge: A random 8-byte response generated by the server in the CHALLENGE_MESSAGE
+        :param client_challenge: A random 8-byte response generated by the client for the AUTHENTICATE_MESSAGE
+        :param timestamp: An 8-byte timestamp in windows format, 100 nanoseconds since 1601-01-01
+        :param target_info: The target_info structure from the CHALLENGE_MESSAGE with the CBT attached if required
+        :return response: NtChallengeResponse to the server_challenge
+        """
+
+        nt_hash = self._ntowfv2(user_name, password, domain_name)
         temp = self._get_NTLMv2_temp(timestamp, client_challenge, target_info)
         nt_proof_str = hmac.new(nt_hash, (server_challenge + temp)).digest()
+        response = nt_proof_str + temp
 
-        return nt_proof_str + temp
+        return response
 
-    """
+    def _get_NTLMv2_temp(self, timestamp, client_challenge, target_info):
+        """
         [MS-NLMP] v28.0 2016-07-14
 
         2.2.2.7 NTLMv2_CLIENT_CHALLENGE - variable length
         The NTLMv2_CLIENT_CHALLENGE structure defines the client challenge in
-        the AUTHENTICATE_MESSAGE. This strucutre is used only when NTLM v2
+        the AUTHENTICATE_MESSAGE. This structure is used only when NTLM v2
         authentication is configured and is transported in the NTLMv2_RESPONSE
         structure.
 
@@ -296,8 +328,12 @@ class ComputeResponse():
         By default this will be the target_info returned from the CHALLENGE_MESSAGE plus
         MSV_AV_CHANNEL_BINDINGS if specified otherwise it is a new target_info set with
         MSV_AV_TIMESTAMP to the current time.
-    """
-    def _get_NTLMv2_temp(self, timestamp, client_challenge, target_info):
+
+        :param timestamp: An 8-byte timestamp in windows format, 100 nanoseconds since 1601-01-01
+        :param client_challenge: A random 8-byte response generated by the client for the AUTHENTICATE_MESSAGE
+        :param target_info: The target_info structure from the CHALLENGE_MESSAGE with the CBT attached if required
+        :return temp: The CLIENT_CHALLENGE structure that will be added to the NtChallengeResponse structure
+        """
         resp_type = b'\1'
         hi_resp_type = b'\1'
         reserved1 = b'\0' * 2
@@ -314,16 +350,15 @@ class ComputeResponse():
 
         return temp
 
-    """_calc_resp generates the LM response given a 16-byte password hash and the
-        challenge from the Type-2 message.
-        @param password_hash
-            16-byte password hash
-        @param server_challenge
-            8-byte challenge from Type-2 message
-        returns
-            24-byte buffer to contain the LM response upon return
-    """
     def _calc_resp(self, password_hash, server_challenge):
+        """
+        Generate the LM response given a 16-byte password hash and the challenge
+        from the CHALLENGE_MESSAGE
+
+        :param password_hash: A 16-byte password hash
+        :param server_challenge: A random 8-byte response generated by the server in the CHALLENGE_MESSAGE
+        :return res: A 24-byte buffer to contain the LM response upon return
+        """
 
         # padding with zeros to make the hash 21 bytes long
         password_hash += b'\0' * (21 - len(password_hash))
@@ -339,7 +374,8 @@ class ComputeResponse():
         res = res + dobj.encrypt(server_challenge[0:8])
         return res
 
-    """
+    def _get_channel_bindings_value(self, server_certificate_hash):
+        """
         https://msdn.microsoft.com/en-us/library/windows/desktop/dd919963%28v=vs.85%29.aspx?f=255&MSPPError=-2147217396
         https://blogs.msdn.microsoft.com/openspecification/2013/03/26/ntlm-and-channel-binding-hash-aka-extended-protection-for-authentication/
 
@@ -347,8 +383,10 @@ class ComputeResponse():
         This method takes in the SHA256 hash (Hash of the DER encoded certificate of the server we are connecting to)
         and add's it to the gss_channel_bindings_struct. It then gets the MD5 hash and converts this to a
         byte array in preparation of adding it to the AV_PAIR structure.
-    """
-    def _get_channel_bindings_value(self, server_certificate_hash):
+
+        :param server_certificate_hash: The SHA256 hash of the server certificate (DER encoded) NTLM is authenticated to
+        :return channel_bindings: An MD5 hash of the gss_channel_bindings_struct to add to the AV_PAIR MsvChannelBindings
+        """
         # Channel Binding Tokens support, used for NTLMv2
         # Decode the SHA256 certificate hash
         certificate_digest = base64.b16decode(server_certificate_hash)
@@ -366,7 +404,9 @@ class ComputeResponse():
         except TypeError:
             # Work-around for Python 2.6 bug
             cbt_value = bytearray.fromhex(unicode(channel_bindings_hash))
-        return bytes(cbt_value)
+
+        channel_bindings = bytes(cbt_value)
+        return channel_bindings
 
     def _get_windows_timestamp(self):
         # Get Windows Date time, 100 nanoseconds since 1601-01-01 in a 64 bit structure
