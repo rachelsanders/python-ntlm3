@@ -74,12 +74,12 @@ domain_name = 'Domain' # Can be blank if you are not in a domain
 workstation = socket.gethostname().upper() # Can be blank if you wish to not send this info
 
 ntlm_context = Ntlm(ntlm_compatibility=0) # Put the ntlm_compatibility level here, 0-2 for LM Auth/NTLMv1 Auth
-negotiate_message = ntlm_context.create_negotiate_message(domain_name, workstation)
+negotiate_message = ntlm_context.create_negotiate_message(domain_name, workstation).decode()
 
 # Attach the negotiate_message to your NTLM/NEGOTIATE HTTP header and send to the server. Get the challenge response back from the server
 challenge_message = http.response.headers['HEADERFIELD']
 
-authenticate_message = ntlm_context.create_authenticate_message(user_name, password, domain_name, workstation)
+authenticate_message = ntlm_context.create_authenticate_message(user_name, password, domain_name, workstation).decode()
 
 # Attach the authenticate_message ot your NTLM_NEGOTIATE HTTP header and send to the server. You are now authenticated with NTLMv1
 ```
@@ -100,12 +100,12 @@ workstation = socket.gethostname().upper() # Can be blank if you wish to not sen
 server_certificate_hash = '96B2FC1EC30792619286A0C7FD62863E81A6564E72829CBC0A46F7B1D5D92A18' # Can be blank if you don't want CBT sent
 
 ntlm_context = Ntlm()
-negotiate_message = ntlm_context.create_negotiate_message(domain_name, workstation)
+negotiate_message = ntlm_context.create_negotiate_message(domain_name, workstation).decode()
 
 # Attach the negotiate_message to your NTLM/NEGOTIATE HTTP header and send to the server. Get the challenge response back from the server
 challenge_message = http.response.headers['HEADERFIELD']
 
-authenticate_message = ntlm_context.create_authenticate_message(user_name, password, domain_name, workstation, server_certificate_hash)
+authenticate_message = ntlm_context.create_authenticate_message(user_name, password, domain_name, workstation, server_certificate_hash).decode()
 
 # Attach the authenticate_message ot your NTLM_NEGOTIATE HTTP header and send to the server. You are now authenticated with NTLMv1
 ```

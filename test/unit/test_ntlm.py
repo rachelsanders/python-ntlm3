@@ -115,13 +115,13 @@ class Test_InitialiseNtlm(unittest.TestCase):
         with self.assertRaises(Exception) as context:
             Ntlm(ntlm_compatibility=6)
 
-        self.assertTrue('Unknown ntlm_compatibility level - expecting value between 0 and 5' in context.exception)
+        self.assertTrue('Unknown ntlm_compatibility level - expecting value between 0 and 5' in context.exception.args)
 
     def test_initialise_with_illegal_ntlm_compatibility_low(self):
         with self.assertRaises(Exception) as context:
             Ntlm(ntlm_compatibility=-1)
 
-        self.assertTrue('Unknown ntlm_compatibility level - expecting value between 0 and 5' in context.exception)
+        self.assertTrue('Unknown ntlm_compatibility level - expecting value between 0 and 5' in context.exception.args)
 
     def test_initialise_with_session_security(self):
         ntlm_context = Ntlm(session_security='none')
@@ -138,7 +138,7 @@ class Test_InitialiseNtlm(unittest.TestCase):
         with self.assertRaises(Exception) as context:
             Ntlm(session_security='not_allowed')
 
-        self.assertTrue('session_security must be \'none\'' in context.exception)
+        self.assertTrue('session_security must be \'none\'' in context.exception.args)
 
     def test_initialise_oem_encoding(self):
         ntlm_context = Ntlm(use_oem_encoding=True)
@@ -192,7 +192,7 @@ class Test_Messages(object):
     def test_create_negotiate_message(self):
         ntlm_context = default_ntlm_context
         expected = 'TlRMTVNTUAABAAAAgjKAAAYABgAoAAAACAAIAC4AAAAAAAAAAAAAAERvbWFpbkNPTVBVVEVS'
-        actual = ntlm_context.create_negotiate_message(domain_name, workstation)
+        actual = ntlm_context.create_negotiate_message(domain_name, workstation).decode()
 
         assert actual == expected
 
@@ -233,6 +233,6 @@ class Test_Messages(object):
         expected = 'TlRMTVNTUAADAAAAGAAYAEgAAAAYABgAYAAAAAwADAB4AAAACAAIAIQAAAAQABAAjAAAAAAAAACcAAAAM4IKggUBKAo' \
                    'AAAAPqqqqqqqqqqoAAAAAAAAAAAAAAAAAAAAAdTf4A642cSjKRYIEvefK+B6X7SaDJnIyRABPAE0AQQBJAE4AVQBzAG' \
                    'UAcgBDAE8ATQBQAFUAVABFAFIA'
-        actual = ntlm_context.create_authenticate_message(user_name, password, domain_name, workstation)
+        actual = ntlm_context.create_authenticate_message(user_name, password, domain_name, workstation).decode()
 
         assert actual == expected

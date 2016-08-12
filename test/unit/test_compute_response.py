@@ -211,6 +211,21 @@ class Test_ChallengeResults(unittest.TestCase):
 
         assert actual == expected
 
+    @mock.patch('random.getrandbits', side_effect=mock_random)
+    @mock.patch('ntlm3.compute_response.ComputeResponse._get_windows_timestamp', side_effect=mock_timestamp)
+    def test_nt_v2_response_no_target_info(self, random_function, timestamp_function):
+        expected = HexToByte('39 56 f2 e5 69 d9 af a3 ac 2d 4f 36 7d 38 b9 c5'
+                             '01 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00'
+                             'aa aa aa aa aa aa aa aa 00 00 00 00 00 00 00 00'
+                             '00 00 00 00')
+
+        test_challenge_message = challenge_message
+        test_challenge_message.target_info = None
+        actual = ComputeResponse(user_name, password, domain_name, test_challenge_message, 3).get_nt_challenge_response(
+            None)
+
+        assert actual == expected
+
     # This test is different from the other Microsoft examples, they don't have an example where the AV_TIMESTAMP pair is present, using our own expected results
     @mock.patch('random.getrandbits', side_effect=mock_random)
     def test_nt_v2_response_with_timestamp_av_pair(self, random_function):

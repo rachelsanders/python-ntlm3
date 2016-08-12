@@ -161,43 +161,6 @@ class ChallengeMessage(object):
         assert self.signature == NTLM_SIGNATURE
         assert self.message_type == MessageTypes.NTLM_CHALLENGE
 
-    def get_target_name(self):
-        payload_offset = self.EXPECTED_BODY_LENGTH
-
-        # DomainNameFields - 8 bytes
-        domain_name_len = struct.pack('<H', len(self.domain_name))
-        domain_name_max_len = struct.pack('<H', len(self.domain_name))
-        domain_name_buffer_offset = struct.pack('<I', payload_offset)
-        payload_offset += len(self.domain_name)
-
-        # WorkstationFields - 8 bytes
-        workstation_len = struct.pack('<H', len(self.workstation))
-        workstation_max_len = struct.pack('<H', len(self.workstation))
-        workstation_buffer_offset = struct.pack('<I', payload_offset)
-        payload_offset += len(self.workstation)
-
-        # Payload - variable length
-        payload = self.domain_name + self.workstation
-
-        # Bring the header values together into 1 message
-        msg1 = self.signature
-        msg1 += self.message_type
-        msg1 += self.negotiate_flags
-        msg1 += domain_name_len
-        msg1 += domain_name_max_len
-        msg1 += domain_name_buffer_offset
-        msg1 += workstation_len
-        msg1 += workstation_max_len
-        msg1 += workstation_buffer_offset
-        msg1 += self.version
-
-        assert self.EXPECTED_BODY_LENGTH == len(msg1), "BODY_LENGTH: %d != msg1: %d" % (
-        self.EXPECTED_BODY_LENGTH, len(msg1))
-
-        # Adding the payload data to the message
-        msg1 += payload
-        return msg1
-
 class AuthenticateMessage(object):
     EXPECTED_BODY_LENGTH = 72
 

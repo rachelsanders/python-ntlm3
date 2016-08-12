@@ -192,8 +192,8 @@ def create_NTLM_NEGOTIATE_MESSAGE(user, type1_flags=NTLM_TYPE1_FLAGS):
     ntlm_context = Ntlm(**{"ntlm_compatibility": 2})
     ntlm_context.negotiate_flags = type1_flags
     user_parts = user.split('\\', 1)
-    domain_name = user_parts[0].upper().encode('ascii')
-    workstation = socket.gethostname().upper().encode('ascii')
+    domain_name = user_parts[0].upper()
+    workstation = socket.gethostname().upper()
 
     msg1 = ntlm_context.create_negotiate_message(domain_name, workstation)
 
