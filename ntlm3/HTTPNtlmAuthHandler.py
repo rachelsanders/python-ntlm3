@@ -20,6 +20,7 @@ import re
 from ntlm3.constants import NegotiateFlags
 from . import ntlm
 
+# TODO: Is this file needed, this is very much what requests-ntlm does and should be brought there. This hasn't been updated ot support NTLMv2
 
 class AbstractNtlmAuthHandler:
     def __init__(self, password_mgr=None, debuglevel=0):
@@ -105,7 +106,7 @@ class AbstractNtlmAuthHandler:
             if m:
                 auth_header_value, = m.groups()
 
-            (ServerChallenge, NegotiateFlags, TargetInfo) = ntlm.parse_NTLM_CHALLENGE_MESSAGE(auth_header_value[5:])
+            (ServerChallenge, NegotiateFlags) = ntlm.parse_NTLM_CHALLENGE_MESSAGE(auth_header_value[5:])
             auth = 'NTLM %s' % ntlm.create_NTLM_AUTHENTICATE_MESSAGE(ServerChallenge, UserName, DomainName, pw,
                                                                      NegotiateFlags)
             headers[self.auth_header] = auth

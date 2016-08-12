@@ -67,7 +67,7 @@ class NegotiateFlags(object):
     NTLMSSP_NEGOTIATE_LM_KEY                        = 0x00000080
     NTLMSSP_NEGOTIATE_DATAGRAM                      = 0x00000040
     NTLMSSP_NEGOTIATE_SEAL                          = 0x00000020
-    NTLMSSP_NEGOTIATE_ALWAYS_SIGN                   = 0x00000010
+    NTLMSSP_NEGOTIATE_SIGN                          = 0x00000010
     NTLMSSP_RESERVED_R10                            = 0x00000008
     NTLMSSP_REQUEST_TARGET                          = 0x00000004
     NTLMSSP_NEGOTIATE_OEM                           = 0x00000002

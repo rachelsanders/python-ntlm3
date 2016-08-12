@@ -11,30 +11,10 @@
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library.  If not, see <http://www.gnu.org/licenses/> or <http://www.gnu.org/licenses/lgpl.txt>.
 
-import struct
 import base64
 import socket
-from ntlm3.constants import NegotiateFlags, MessageTypes, NTLM_SIGNATURE
-from ntlm3.target_info import TargetInfo
-from ntlm3.compute_response import ComputeResponse
-
-# TODO: standardise these as they could be the same
-# we send these flags with our type 1 message
-NTLM_TYPE1_FLAGS = (NegotiateFlags.NTLMSSP_NEGOTIATE_OEM |
-                        NegotiateFlags.NTLMSSP_REQUEST_TARGET |
-                        NegotiateFlags.NTLMSSP_NEGOTIATE_NTLM |
-                        NegotiateFlags.NTLMSSP_NEGOTIATE_OEM_DOMAIN_SUPPLIED |
-                        NegotiateFlags.NTLMSSP_NEGOTIATE_OEM_WORKSTATION_SUPPLIED |
-                        NegotiateFlags.NTLMSSP_NEGOTIATE_EXTENDED_SESSIONSECURITY |
-                        NegotiateFlags.NTLMSSP_NEGOTIATE_VERSION)
-
-# we then send these flags with our type 2 message
-NTLM_TYPE2_FLAGS = (NegotiateFlags.NTLMSSP_NEGOTIATE_UNICODE |
-                    NegotiateFlags.NTLMSSP_REQUEST_TARGET |
-                    NegotiateFlags.NTLMSSP_NEGOTIATE_NTLM |
-                    NegotiateFlags.NTLMSSP_NEGOTIATE_EXTENDED_SESSIONSECURITY |
-                    NegotiateFlags.NTLMSSP_NEGOTIATE_TARGET_INFO |
-                    NegotiateFlags.NTLMSSP_NEGOTIATE_VERSION)
+from ntlm3.constants import NegotiateFlags
+from ntlm3.messages import NegotiateMessage, ChallengeMessage, AuthenticateMessage
 
 """
 utility functions for Microsoft NTLM authentication
@@ -56,252 +36,191 @@ Optimized Attack for NTLM2 Session Response
 http://www.blackhat.com/presentations/bh-asia-04/bh-jp-04-pdfs/bh-jp-04-seki.pdf
 """
 
-"""
-    [MS-NLMP] v28.0 2016-07-14
+class Ntlm(object):
+    """
+    Initialises the NTLM context to use when sending and receiving messages to and from the server. You should be
+    using this object as it supports NTLMv2 authenticate and it easier to use than before. It should also potentially
+    make it eaiser to support signing and sealing of messages as well as a MIC structure in the future as the
+    Authentication message now has easy access to both the Negotiate and Challenge messages used previously.
 
-    2.2.1.1 NEGOTIATE_MESSAGE
-    The NEGOTIATE_MESSAGE defines an NTLM Negotiate message that is sent from the client to
-    the server. This message allows the client to specify its supported NTLM options to
-    the server.
+    :param ntlm_compatibility: The Lan Manager Compatibility Level to use withe the auth message - Default 3
+                                    This is set by an Administrator in the registry key
+                                    'HKLM\SYSTEM\CurrentControlSet\Control\Lsa\LmCompatibilityLevel'
+                                    The values correspond to the following;
+                                    0 : Clients use LM and NTLM authentication, but they never use NTLMv2 session security.
+                                        Domain controllers accept LM, NTLM, and NTLMv2 authentication.
+                                    1 : Clients use LM and NTLM authentication, and they use NTLMv2 session security if the
+                                        server supports it. Domain controllers accept LM, NTLM, and NTLMv2 authentication.
+                                    2 : Clients use only NTLM authentication, and they use NTLMv2 (NTLM2 in this code) session
+                                        security if the server supports it. Domain controller accepts LM, NTLM, and NTLMv2 authentication.
+                                    3 : Clients use only NTLMv2 authentication, and they use NTLMv2 session security if the server
+                                        supports it. Domain controllers accept LM, NTLM, and NTLMv2 authentication.
+                                    4 : Clients use only NTLMv2 authentication, and they use NTLMv2 session security if the server
+                                        supports it. Domain controller refuses LM authentication responses, but it accepts NTLM and NTLMv2
+                                    5 : Clients use only NTLMv2 authentication, and they use NTLMv2 session security if the server
+                                        supports it. Domain controller refuses LM and NTLM authentication responses, but it accepts NTLMv2.
+    :param session_security: ['none', 'sign', 'seal'] Setting to set if we want to sign, seal(encrypt) or do nothing with our messages.
+                                    Only none is implemented right now
+    :param use_oem_encoding: Whether we want to use oem encoding (old encoding) for our AUTHENTICATE_MESSAGES, default is False
+    :param use_version_debug: Whether we want to sent the version info for debugging purposes, default if False
+    :param use_128_key: Whether we want to 128-bit keys (True) when sealing our messages or 56-bit (False), default is True
+    """
+    def __init__(self, ntlm_compatibility=3, session_security='none', use_oem_encoding=False, use_version_debug=False, use_128_key=True):
+        self.ntlm_compatibility = ntlm_compatibility
 
-    :param user: The username ('DOMAIN\\USER') string to put in our negotiate message
-    :param type1_flags: Allows you to override the default flags sent with out negotiate message
+        # Setting up our flags so the challenge message returns the target info block if supported
+        self.negotiate_flags = NegotiateFlags.NTLMSSP_NEGOTIATE_TARGET_INFO
+
+        # Setting the message types based on the ntlm_compatibility level
+        self._set_ntlm_compatibility_flags(self.ntlm_compatibility)
+
+        # TODO: Add support for setting the key bit level, need session_security seal and sign
+        # Setting the key length to 128-bit unless otherwise stated
+        #if use_128_key:
+        #    self.negotiate_flags |= NegotiateFlags.NTLMSSP_NEGOTIATE_128
+        #else:
+        #    self.negotiate_flags |= NegotiateFlags.NTLMSSP_NEGOTIATE_56
+
+        # Sets the encoding type flag based on a passed in parameter
+        if use_oem_encoding == True:
+            self.negotiate_flags |= NegotiateFlags.NTLMSSP_NEGOTIATE_OEM
+        else:
+            self.negotiate_flags |= NegotiateFlags.NTLMSSP_NEGOTIATE_UNICODE
+
+        # Set the version number in the messages if the debug flag is set
+        if use_version_debug == True:
+            self.negotiate_flags |= NegotiateFlags.NTLMSSP_NEGOTIATE_VERSION
+
+        # Check the session_security flags
+        self._set_session_security(session_security)
+
+
+    def create_negotiate_message(self, domain_name=None, workstation=None):
+        """
+        Create an NTLM NEGOTIATE_MESSAGE
+
+        :param domain_name: The domain name of the user account we are authenticating with, default is None
+        :param worksation: The workstation we are using to authenticate with, default is None
+        :return: A base64 encoded string of the NEGOTIATE_MESSAGE
+        """
+        self.negotiate_message = NegotiateMessage(self.negotiate_flags, domain_name, workstation)
+
+        return base64.b64encode(self.negotiate_message.get_data())
+
+    def parse_challenge_message(self, msg2):
+        """
+        Parse the NTLM CHALLENGE_MESSAGE from the server and add it to the Ntlm context fields
+        :param msg2: A base64 encoded string of the CHALLENGE_MESSAGE
+        """
+        msg2 = base64.b64decode(msg2)
+        self.challenge_message = ChallengeMessage(msg2)
+
+    def create_authenticate_message(self, user_name, password, domain_name=None, workstation=None, server_certificate_hash=None):
+        """
+        Create an NTLM AUTHENTICATE_MESSAGE based on the Ntlm context and the previous messages sent and received
+        :param user_name: The user name of the user we are trying to authenticate with
+        :param password: The password of the user we are trying to authenticate with
+        :param domain_name: The domain name of the user account we are authenticated with, default is None
+        :param workstation: The workstation we are using to authenticate with, default is None
+        :param server_certificate_hash: The SHA256 hash string of the server certificate (DER encoded) NTLM is authenticating to. Used for Channel
+                                        Binding Tokens. If nothing is supplied then the CBT hash will not be sent. See messages.py AuthenticateMessage
+                                        for more details
+        :return: A base64 encoded string of the AUTHENTICATE_MESSAGE
+        """
+        self.authenticate_message = AuthenticateMessage(user_name, password, domain_name, workstation, self.challenge_message, self.ntlm_compatibility, server_certificate_hash)
+
+        return base64.b64encode(self.authenticate_message.get_data())
+
+
+    def _set_ntlm_compatibility_flags(self, ntlm_compatibility):
+        if (ntlm_compatibility >= 0) and (ntlm_compatibility <= 5):
+            if ntlm_compatibility == 0:
+                self.negotiate_flags |= NegotiateFlags.NTLMSSP_NEGOTIATE_NTLM | \
+                                        NegotiateFlags.NTLMSSP_NEGOTIATE_LM_KEY
+            elif ntlm_compatibility == 1:
+                self.negotiate_flags |= NegotiateFlags.NTLMSSP_NEGOTIATE_NTLM | \
+                                        NegotiateFlags.NTLMSSP_NEGOTIATE_EXTENDED_SESSIONSECURITY
+            else:
+                self.negotiate_flags |= NegotiateFlags.NTLMSSP_NEGOTIATE_EXTENDED_SESSIONSECURITY
+        else:
+            raise Exception("Unknown ntlm_compatibility level - expecting value between 0 and 5")
+
+    def _set_session_security(self, session_security):
+        if session_security not in ('none'): #TODO: Add sign and seal to the checks once that support has been added
+            raise Exception("session_security must be 'none'")
+
+        # TODO: Add support for message signing
+        # Add signing to the message if the session_security is set to sign
+        #if session_security == 'sign':
+        #    self.negotiate_flags |= NegotiateFlags.NTLMSSP_NEGOTIATE_KEY_EXCH | \
+        #                            NegotiateFlags.NTLMSSP_NEGOTIATE_ALWAYS_SIGN | \
+        #                            NegotiateFlags.NTLMSSP_NEGOTIATE_SIGN
+
+        # TODO: Add support for message sealing
+        # Add encryption support to the emssage if the session_security is set to seal
+        #if session_security == 'seal':
+        #    self.negotiate_flags |= NegotiateFlags.NTLMSSP_NEGOTIATE_KEY_EXCH | \
+        #                            NegotiateFlags.NTLMSSP_NEGOTIATE_ALWAYS_SIGN | \
+        #                            NegotiateFlags.NTLMSSP_NEGOTIATE_SIGN | \
+        #                            NegotiateFlags.NTLMSSP_NEGOTIATE_SEAL
+
+
+
+
 """
+    The following functions and variables are only here for compatibility purposes. They are now deprecated as they
+    do not allow support for NTLMv2 authentication and the benefits that brings. Please note these will hopefully be
+    deleted sometime in the future and are only here to bridge older applications still using the older methods and
+    make it easier for them to switch to the newer structure above.
+"""
+NTLM_TYPE1_FLAGS = (NegotiateFlags.NTLMSSP_NEGOTIATE_OEM |
+                    NegotiateFlags.NTLMSSP_REQUEST_TARGET |
+                    NegotiateFlags.NTLMSSP_NEGOTIATE_NTLM |
+                    NegotiateFlags.NTLMSSP_NEGOTIATE_OEM_DOMAIN_SUPPLIED |
+                    NegotiateFlags.NTLMSSP_NEGOTIATE_OEM_WORKSTATION_SUPPLIED |
+                    NegotiateFlags.NTLMSSP_NEGOTIATE_EXTENDED_SESSIONSECURITY |
+                    NegotiateFlags.NTLMSSP_NEGOTIATE_VERSION)
+
+NTLM_TYPE2_FLAGS = (NegotiateFlags.NTLMSSP_NEGOTIATE_UNICODE |
+                    NegotiateFlags.NTLMSSP_REQUEST_TARGET |
+                    NegotiateFlags.NTLMSSP_NEGOTIATE_NTLM |
+                    NegotiateFlags.NTLMSSP_NEGOTIATE_EXTENDED_SESSIONSECURITY |
+                    NegotiateFlags.NTLMSSP_NEGOTIATE_TARGET_INFO |
+                    NegotiateFlags.NTLMSSP_NEGOTIATE_VERSION)
+
 def create_NTLM_NEGOTIATE_MESSAGE(user, type1_flags=NTLM_TYPE1_FLAGS):
-    expected_body_length = 40
-    payload_offset = expected_body_length
-
-    # Gettings values in input into the message
-    domain_name = user.split('\\', 1)[0].upper().encode('ascii')
+    ntlm_context = Ntlm(**{"ntlm_compatibility": 2})
+    ntlm_context.negotiate_flags = type1_flags
+    user_parts = user.split('\\', 1)
+    domain_name = user_parts[0].upper().encode('ascii')
     workstation = socket.gethostname().upper().encode('ascii')
 
-    # Setting the values for the message
-    signature = NTLM_SIGNATURE
-    message_type = struct.pack('<L', MessageTypes.NTLM_NEGOTIATE)
-    negotiate_flags = struct.pack('<I', type1_flags)
-
-    # DomainNameFields - 8 bytes
-    domain_name_len = struct.pack('<H', len(domain_name))
-    domain_name_max_len = struct.pack('<H', len(domain_name))
-    domain_name_buffer_offset = struct.pack('<I', payload_offset)
-    payload_offset += len(domain_name)
-
-    # WorkstationFields - 8 bytes
-    workstation_len = struct.pack('<H', len(workstation))
-    workstation_max_len = struct.pack('<H', len(workstation))
-    workstation_buffer_offset = struct.pack('<I', payload_offset)
-    payload_offset += len(workstation)
-
-    # Version Fields - 8 bytes
-    # TODO: Get the major and minor version of Windows instead of using default values
-    product_major_version = struct.pack('<B', 5)
-    product_minor_version = struct.pack('<B', 1)
-    product_build = struct.pack('<H', 2600)
-    version_reserved = b'\0' * 3
-    ntlm_revision_current = struct.pack('<B', 15)
-
-    # Payload - variable length
-    payload = domain_name + workstation
-
-    # Bring the header values together into 1 message
-    msg1 = signature + message_type + negotiate_flags + \
-        domain_name_len + domain_name_max_len + domain_name_buffer_offset + \
-        workstation_len + workstation_max_len + workstation_buffer_offset + \
-        product_major_version + product_minor_version + product_build + \
-        version_reserved + ntlm_revision_current
-
-    assert expected_body_length == len(msg1), "BODY_LENGTH: %d != msg1: %d" % (expected_body_length, len(msg1))
-
-    # Adding the payload data to the message
-    msg1 += payload
-    msg1 = base64.b64encode(msg1)
+    msg1 = ntlm_context.create_negotiate_message(domain_name, workstation)
 
     return msg1
 
-"""
-    [MS-NLMP] v28.0 2016-07-14
-
-    2.2.1.2 CHALLENGE_MESSAGE
-    The CHALLENGE_MESSAGE defines an NTLM challenge message that is sent from the server to
-    the client. The CHALLENGE_MESSAGE is used by the server to challenge the client to prove
-    its identity, For connection-oriented requests, the CHALLENGE_MESSAGE generated by the
-    server is in response to the NEGOTIATE_MESSAGE from the client.
-
-    :param msg2: The base64 encoded message (CHALLENGE_MESSAGE) received from the server after sending our NEGOTIATE_MESSAGE
-"""
 def parse_NTLM_CHALLENGE_MESSAGE(msg2):
-    msg2 = base64.b64decode(msg2)
+    ntlm_context = Ntlm(**{"ntlm_compatibility": 2})
+    ntlm_context.parse_challenge_message(msg2)
 
-    # Getting the values from the CHALLENGE_MESSAGE
-    signature = msg2[0:8]
-    assert signature == NTLM_SIGNATURE
+    return (ntlm_context.challenge_message.server_challenge, ntlm_context.challenge_message.negotiate_flags)
 
-    message_type = struct.unpack("<I", msg2[8:12])[0]
-    assert message_type == MessageTypes.NTLM_CHALLENGE
+def create_NTLM_AUTHENTICATE_MESSAGE(nonce, user, domain, password, NegotiateFlags):
+    ntlm_context = Ntlm(**{"ntlm_compatibility": 2})
+    ntlm_context.negotiate_flags = NTLM_TYPE2_FLAGS
+    workstation = socket.gethostname().upper()
 
-    # TargetName Fields
-    target_name_len = struct.unpack("<H", msg2[12:14])[0]
-    target_name_max_len = struct.unpack("<H", msg2[14:16])[0]
-    target_name_buffer_offset = struct.unpack("<I", msg2[16:20])[0]
+    """
+    This is a dodgy hack to set up a ChallengeMessage object from the Microsoft example.
+    We then overwrite the server_challenge, negotiate_flags and version field with what
+    we get normally. This is because create_authenticate_message need these fields to work
+    and this is the only way to get that compatibility in
+    """
+    ntlm_context.parse_challenge_message('TlRMTVNTUAACAAAADAAMADgAAAAzggqCASNFZ4mrze8AAAAAAAAAAAAAAAAAAAAABgBwFwAAAA9TAGUAcgB2AGUAcg==')
+    ntlm_context.challenge_message.server_challenge = nonce
+    ntlm_context.challenge_message.negotiate_flags = NTLM_TYPE2_FLAGS
+    ntlm_context.challenge_message.version = None
 
-    negotiate_flags = struct.unpack("<I", msg2[20:24])[0]
-    server_challenge = msg2[24:32]
-    reserved = msg2[32:40]
+    msg3 = ntlm_context.create_authenticate_message(user, password, domain, workstation)
 
-    if negotiate_flags & NegotiateFlags.NTLMSSP_REQUEST_TARGET:
-        target_name = msg2[target_name_buffer_offset:target_name_buffer_offset + target_name_len]
-
-    if negotiate_flags & NegotiateFlags.NTLMSSP_NEGOTIATE_TARGET_INFO:
-        # TargetInfo Fields
-        target_info_len = struct.unpack("<H", msg2[40:42])[0]
-        target_info_max_len = struct.unpack("<H", msg2[42:44])[0]
-        target_info_buffer_offset = struct.unpack("<I", msg2[44:48])[0]
-
-        target_info_raw = msg2[target_info_buffer_offset:target_info_buffer_offset + target_info_len]
-        target_info = TargetInfo(target_info_raw)
-    else:
-        target_info = None
-
-    return (server_challenge, negotiate_flags, target_info)
-
-"""
-    [MS-NLMP] v28.0 2016-07-14
-
-    2.2.1.3 AUTHENTICATE_MESSAGE
-    The AUTHENTICATE_MESSAGE defines an NTLM authenticate message that is sent from the
-    client to the server after the CHALLENGE_MESSAGE is processed by the client.
-
-    :param server_challenge: The server_challenge nonce returned in the CHALLENGE_MESSAGE. Used in the auth computation
-    :param user: The user
-    :param domain: The domain
-    :param password: The password
-    :param server_negotiate_flags: The negotiate_flags info of the server returned in the CHALLENGE_MESSAGE. Used to determine what auth level to use
-    :param server_target_info: The target_info data (target_info.py class) of the server returned in the CHALLENGE_MESSAGE. Used in NTLMv2 messages only
-    :param kwargs: An optional dictionary (with default values) which can be used to configure
-
-                    ntlm_compatibility      - The Lan Manager Compatibility Level to use withe the auth message - Default 3
-                                                This is set by an Administrator in the registry key
-                                                'HKLM\SYSTEM\CurrentControlSet\Control\Lsa\LmCompatibilityLevel'
-                                                The values correspond to the following;
-                                                0 : Clients use LM and NTLM authentication, but they never use NTLMv2 session security.
-                                                    Domain controllers accept LM, NTLM, and NTLMv2 authentication.
-                                                1 : Clients use LM and NTLM authentication, and they use NTLMv2 session security if the
-                                                    server supports it. Domain controllers accept LM, NTLM, and NTLMv2 authentication.
-                                                2 : Clients use only NTLM authentication, and they use NTLMv2 (NTLM2 in this code) session
-                                                    security if the server supports it. Domain controller accepts LM, NTLM, and NTLMv2 authentication.
-                                                3 : Clients use only NTLMv2 authentication, and they use NTLMv2 session security if the server
-                                                    supports it. Domain controllers accept LM, NTLM, and NTLMv2 authentication.
-                                                4 : Clients use only NTLMv2 authentication, and they use NTLMv2 session security if the server
-                                                    supports it. Domain controller refuses LM authentication responses, but it accepts NTLM and NTLMv2
-                                                5 : Clients use only NTLMv2 authentication, and they use NTLMv2 session security if the server
-                                                    supports it. Domain controller refuses LM and NTLM authentication responses, but it accepts NTLMv2.
-
-                    server_certificate_hash - The SHA256 hash string of the server certificate (DER encoded) NTLM is authenticating to. This is used to add
-                                              to the gss_channel_bindings_struct for Channel Binding Tokens support. If none is passed through then python-ntlm3
-                                              will not use Channel Binding Tokens when authenticating with the server which could cause issues if it is set to
-                                              only authenticate when these are present. This is only used for NTLMv2 authentication.
-"""
-def create_NTLM_AUTHENTICATE_MESSAGE(server_challenge, user, domain, password, server_negotiate_flags, server_target_info=None, **kwargs):
-    expected_body_length = 72
-    payload_offset = expected_body_length
-
-    # Setting the default values for ntlm_compatibility and server_certificate_hash if it isn't set already
-    ntlm_compatibility = kwargs.get('ntlm_compatibility', 3)
-    server_certificate_hash = kwargs.get('server_certificate_hash', None)
-
-    # Getting values in input into the message
-    if (server_negotiate_flags & NegotiateFlags.NTLMSSP_NEGOTIATE_UNICODE):
-        domain_name = domain.upper().encode('utf-16-le')
-        user_name = user.encode('utf-16-le')
-        workstation = socket.gethostname().upper().encode('utf-16-le')
-
-        # TODO: Implement signing and sealing of NTLM messages
-        encrypted_random_session_key = "".encode('utf-16-le')
-    else:
-        domain_name = domain.upper().encode('ascii')
-        user_name = user.encode('ascii')
-        workstation = socket.gethostname().upper().encode('ascii')
-
-        # TODO: Implement signing and sealing of NTLM messages
-        encrypted_random_session_key = b""
-
-    compute_response = ComputeResponse(server_negotiate_flags, domain_name, user_name, password, server_challenge, server_target_info, ntlm_compatibility)
-    # Get the nt_challenge_response based on the NTLM version used and the flags set. This will also return the target_info sent to the client used when calculating the lm_challenge_response
-    (nt_challenge_response, client_target_info) = compute_response.get_nt_challenge_response(server_certificate_hash)
-
-    # Get the lm_challenge_response based on the NTLM version used and the flags set.
-    lm_challenge_response = compute_response.get_lm_challenge_response()
-
-    # Setting the values for the message
-    signature = NTLM_SIGNATURE
-    message_type = struct.pack('<I', MessageTypes.NTLM_AUTHENTICATE)
-    negotiate_flags = struct.pack('<I', NTLM_TYPE2_FLAGS)
-
-    # LmChallengeResponseFields - 8 bytes
-    lm_challenge_response_len = struct.pack('<H', len(lm_challenge_response))
-    lm_challenge_response_max_len = struct.pack('<H', len(lm_challenge_response))
-    lm_challenge_response_buffer_offset = struct.pack('<I', payload_offset)
-    payload_offset += len(lm_challenge_response)
-
-    # NtChallengeResponseFields - 8 bytes
-    nt_challenge_response_len = struct.pack('<H', len(nt_challenge_response))
-    nt_challenge_response_max_len = struct.pack('<H', len(nt_challenge_response))
-    nt_challenge_response_buffer_offset = struct.pack('<I', payload_offset)
-    payload_offset += len(nt_challenge_response)
-
-    # DomainNameFields - 8 bytes
-    domain_name_len = struct.pack('<H', len(domain_name))
-    domain_name_max_len = struct.pack('<H', len(domain_name))
-    domain_name_buffer_offset = struct.pack('<I', payload_offset)
-    payload_offset += len(domain_name)
-
-    # UserNameFields - 8 bytes
-    user_name_len = struct.pack('<H', len(user_name))
-    user_name_max_len = struct.pack('<H', len(user_name))
-    user_name_buffer_offset = struct.pack('<I', payload_offset)
-    payload_offset += len(user_name)
-
-    # WorkstatonFields - 8 bytes
-    workstation_len = struct.pack('<H', len(workstation))
-    workstation_max_len = struct.pack('<H', len(workstation))
-    workstation_buffer_offset = struct.pack('<I', payload_offset)
-    payload_offset += len(workstation)
-
-    # EncryptedRandomSessionKeyFields - 8 bytes
-    encrypted_random_session_key_len = struct.pack('<H', len(encrypted_random_session_key))
-    encrypted_random_session_key_max_len = struct.pack('<H', len(encrypted_random_session_key))
-    encrypted_random_session_key_buffer_offset = struct.pack('<I', payload_offset)
-    payload_offset += len(encrypted_random_session_key)
-
-    # Version Fields - 8 bytes
-    # TODO: Get the major and minor version of Windows instead of using default values
-    product_major_version = struct.pack('<B', 5)
-    product_minor_version = struct.pack('<B', 1)
-    product_build = struct.pack('<H', 2600)
-    version_reserved = b'\0' * 3
-    ntlm_revision_current = struct.pack('<B', 15)
-
-    # TODO - Add support for message signing and sealing to utilise the MIC value
-    mic = struct.pack('<IIII', 0, 0, 0, 0)
-
-    # Payload - variable length
-    payload = lm_challenge_response + nt_challenge_response + domain_name + \
-        user_name + workstation + encrypted_random_session_key
-
-    # Bring the header values together into 1 message
-    msg3 = signature + message_type + \
-        lm_challenge_response_len + lm_challenge_response_max_len + lm_challenge_response_buffer_offset + \
-        nt_challenge_response_len + nt_challenge_response_max_len + nt_challenge_response_buffer_offset + \
-        domain_name_len + domain_name_max_len + domain_name_buffer_offset + \
-        user_name_len + user_name_max_len + user_name_buffer_offset + \
-        workstation_len + workstation_max_len + workstation_buffer_offset + \
-        encrypted_random_session_key_len + encrypted_random_session_key_max_len + encrypted_random_session_key_buffer_offset + \
-        negotiate_flags + \
-        product_major_version + product_minor_version + product_build + \
-        version_reserved + ntlm_revision_current
-
-    assert expected_body_length == len(msg3), "BODY_LENGTH: %d != msg3: %d" % (expected_body_length, len(msg3))
-
-    msg3 += payload
-    msg3 = base64.b64encode(msg3)
     return msg3
