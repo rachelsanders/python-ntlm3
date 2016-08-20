@@ -19,7 +19,8 @@ setup(name='python-ntlm3',
       # See https://pypi.python.org/pypi?%3Aaction=list_classifiers
 
       install_requires=[
-          "six"
+          "six",
+          "cryptography"
       ],
 
       classifiers=[

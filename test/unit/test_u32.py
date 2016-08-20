@@ -1,8 +1,7 @@
-import unittest2 as unittest
 import pytest
+import unittest2 as unittest
 
 from ntlm3.U32 import U32
-
 
 class Test_U32(unittest.TestCase):
 
