@@ -1,4 +1,4 @@
-from expected_values import *
+from .expected_values import *
 
 # Used in the client challenge, we want to return hex aa for the length as per Microsoft's example
 def mock_random(ignore):
