@@ -20,6 +20,9 @@ from ntlm3.constants import NegotiateFlags, MessageTypes, NTLM_SIGNATURE, AvFlag
 from ntlm3.rc4 import ARC4
 from ntlm3.target_info import TargetInfo
 
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms
+
 class NegotiateMessage(object):
     EXPECTED_BODY_LENGTH = 40
 
@@ -215,7 +218,7 @@ class AuthenticateMessage(object):
         self.message_type = struct.pack('<L', MessageTypes.NTLM_AUTHENTICATE)
         self.negotiate_flags = challenge_message.negotiate_flags
         self.version = get_version(self.negotiate_flags)
-        self.mic = struct.pack("<IIII", 0, 0, 0, 0)
+        self.mic = None
 
         if domain_name is None:
             self.domain_name = ''
@@ -249,6 +252,10 @@ class AuthenticateMessage(object):
             self.exported_session_key = get_random_export_session_key()
 
             rc4_handle = ARC4(key_exchange_key)
+            #rc4_handle = Cipher(algorithms.ARC4(key_exchange_key), mode=None, backend=default_backend()).encryptor()
+
+            #before = rc4_handle1.update(self.exported_session_key)
+            #after = rc4_handle.update(self.exported_session_key)
             self.encrypted_random_session_key = rc4_handle.update(self.exported_session_key)
         else:
             self.exported_session_key = key_exchange_key
@@ -257,7 +264,7 @@ class AuthenticateMessage(object):
         self.negotiate_flags = struct.pack('<I', self.negotiate_flags)
 
     def get_data(self):
-        if self.mic == struct.pack("<IIII", 0, 0, 0, 0):
+        if self.mic is None:
             mic = b''
             expected_body_length = self.EXPECTED_BODY_LENGTH
         else:
@@ -328,12 +335,11 @@ class AuthenticateMessage(object):
         return msg3
 
     def add_mic(self, negotiate_message, challenge_message):
-        self.mic = struct.pack("<IIII", 0, 0, 0, 0)
-
         if self.target_info is not None:
             av_flags = self.target_info[TargetInfo.MSV_AV_FLAGS]
 
             if av_flags is not None and av_flags[1] == struct.pack("<L", AvFlags.MIC_PROVIDED):
+                self.mic = struct.pack("<IIII", 0, 0, 0, 0)
                 negotiate_data = negotiate_message.get_data()
                 challenge_data = challenge_message.get_data()
                 authenticate_data = self.get_data()

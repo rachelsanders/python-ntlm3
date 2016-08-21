@@ -6,7 +6,7 @@ from ntlm3.messages import NegotiateMessage, ChallengeMessage, AuthenticateMessa
 from ntlm3.target_info import TargetInfo
 from ..expected_values import *
 from ..mock_functions import mock_random, mock_random_session_key, mock_timestamp, mock_version
-from ..utils import HexToByte
+from ..utils import HexToByte, ByteToHex
 
 class Test_Generic(unittest.TestCase):
     def test_random_session_key(self):
@@ -325,8 +325,8 @@ class Test_Authenticate(unittest.TestCase):
                              '8c 00 00 00 7c 00 7c 00 a4 00 00 00 0c 00 0c 00'
                              '58 00 00 00 08 00 08 00 64 00 00 00 20 00 20 00'
                              '6c 00 00 00 10 00 10 00 20 01 00 00 31 82 8a e2'
-                             '06 01 b1 1d 00 00 00 0f 22 cc 0c a0 70 93 27 c1'
-                             '10 8c 5c 02 6f 0a 0f 0c 44 00 6f 00 6d 00 61 00'
+                             '06 01 b1 1d 00 00 00 0f 77 ff c5 e6 db 55 87 0e'
+                             '65 8d 7c ff 33 cd 90 2e 44 00 6f 00 6d 00 61 00'
                              '69 00 6e 00 55 00 73 00 65 00 72 00 43 00 00 00'
                              '4f 00 00 00 4d 00 00 00 50 00 00 00 55 00 00 00'
                              '54 00 00 00 45 00 00 00 52 00 00 00 00 00 00 00'
@@ -340,6 +340,7 @@ class Test_Authenticate(unittest.TestCase):
                              '02 00 00 00 0a 00 10 00 6e a1 9d f0 66 da 46 22'
                              '05 1f 9c 4f 92 c6 df 74 00 00 00 00 00 00 00 00'
                              '1d 08 89 d1 a5 ee ed 21 91 9e 1a b8 27 c3 0b 17')
+
         actual = AuthenticateMessage(user_name, password, domain_name, workstation_name, test_challenge_message, 3,
                                      test_server_cert_hash)
         actual.add_mic(test_negotiate_message, test_challenge_message)
