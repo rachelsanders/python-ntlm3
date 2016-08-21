@@ -217,7 +217,7 @@ class AuthenticateMessage(object):
         self.message_type = struct.pack('<L', MessageTypes.NTLM_AUTHENTICATE)
         self.negotiate_flags = challenge_message.negotiate_flags
         self.version = get_version(self.negotiate_flags)
-        self.mic = None
+        self.mic = struct.pack("<IIII", 0, 0, 0, 0)
 
         if domain_name is None:
             self.domain_name = ''
@@ -259,7 +259,7 @@ class AuthenticateMessage(object):
         self.negotiate_flags = struct.pack('<I', self.negotiate_flags)
 
     def get_data(self):
-        if self.mic is None:
+        if self.mic == struct.pack("<IIII", 0, 0, 0, 0):
             mic = b''
             expected_body_length = self.EXPECTED_BODY_LENGTH
         else:
@@ -330,7 +330,7 @@ class AuthenticateMessage(object):
         return msg3
 
     def add_mic(self, negotiate_message, challenge_message):
-        self.mic = None
+        self.mic = struct.pack("<IIII", 0, 0, 0, 0)
 
         if self.target_info is not None:
             av_flags = self.target_info[TargetInfo.MSV_AV_FLAGS]

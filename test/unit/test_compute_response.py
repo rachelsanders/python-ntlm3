@@ -42,7 +42,7 @@ class Test_HashResults(unittest.TestCase):
     def test_get_LMv2_response(self):
         expected = ntlmv2_lmv2_response
 
-        actual = ComputeResponse._get_LMv2_response(user_name.decode(), password, domain_name.decode(), server_challenge, client_challenge)
+        actual = ComputeResponse._get_LMv2_response(user_name, password, domain_name, server_challenge, client_challenge)
 
         assert actual == expected
 
@@ -82,7 +82,7 @@ class Test_HashResults(unittest.TestCase):
         expected_response = ntlmv2_ntlmv2_response
         expected_key = ntlmv2_session_base_key
 
-        actual_response, actual_key = ComputeResponse._get_NTLMv2_response(user_name.decode(), password, domain_name.decode(),
+        actual_response, actual_key = ComputeResponse._get_NTLMv2_response(user_name, password, domain_name,
                                                        server_challenge, client_challenge, timestamp, test_target_info)
 
         assert actual_response == expected_response

@@ -173,7 +173,7 @@ class Test_Messages(object):
         test_ntlm_context.challenge_message.negotiate_flags -= NegotiateFlags.NTLMSSP_TARGET_TYPE_SERVER
         test_ntlm_context.challenge_message.negotiate_flags |= NegotiateFlags.NTLMSSP_REQUEST_TARGET
 
-        expected_message = base64.b64encode(ntlmv2_authenticate_message)
+        expected_message = base64.b64encode(ntlmv2_authenticate_message).decode()
 
         actual_message = test_ntlm_context.create_authenticate_message(user_name, password, domain_name, "COMPUTER").decode()
         actual_session_security = test_ntlm_context.session_security
@@ -198,7 +198,7 @@ class Test_Messages(object):
         test_ntlm_context.challenge_message.negotiate_flags -= NegotiateFlags.NTLMSSP_TARGET_TYPE_SERVER
         test_ntlm_context.challenge_message.negotiate_flags |= NegotiateFlags.NTLMSSP_REQUEST_TARGET
 
-        expected_message = base64.b64encode(ntlmv2_authenticate_message)
+        expected_message = base64.b64encode(ntlmv2_authenticate_message).decode()
 
         actual_message = test_ntlm_context.create_authenticate_message(user_name, password, domain_name, "COMPUTER").decode()
         actual_session_security = test_ntlm_context.session_security

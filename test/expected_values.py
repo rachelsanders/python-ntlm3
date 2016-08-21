@@ -17,7 +17,7 @@ user_name = 'User'
 domain_name = 'Domain'
 password = 'Password'
 server_name = HexToByte('53 00 65 00 72 00 76 00 65 00 72 00')
-workstation_name = HexToByte('43 00 4f 00 4d 00 50 00 55 00 54 00 45 00 52 00')
+workstation_name = HexToByte('43 00 4f 00 4d 00 50 00 55 00 54 00 45 00 52 00').decode()
 
 # Written as RandomSessionKey in document, in reality this is the session_base_key value
 session_base_key = HexToByte('55 55 55 55 55 55 55 55 55 55 55 55 55 55 55 55')
