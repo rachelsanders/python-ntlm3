@@ -18,7 +18,10 @@ class ARC4(object):
 
     def __init__(self, key):
         # Split up the key into a list
-        key = [ord(c) for c in key]
+        if isinstance(key, str):
+            key = [ord(c) for c in key]
+        else:
+            key = [c for c in key]
 
         #Key-scheduling algorithm (KSA)
         self.state = [n for n in range(256)]
@@ -31,10 +34,13 @@ class ARC4(object):
         chars = []
         random_gen = self._random_generator()
         for char in value:
-            byte = ord(char)
-            updated_byte = byte ^ random_gen.next()
-            chars.append(chr(updated_byte))
-        return ''.join(chars)
+            if isinstance(value, str):
+                byte = ord(char)
+            else:
+                byte = char
+            updated_byte = byte ^ next(random_gen)
+            chars.append(updated_byte)
+        return bytearray(chars)
 
     def _random_generator(self):
         #Pseudo-Random Generation Algorithm (PRGA)
