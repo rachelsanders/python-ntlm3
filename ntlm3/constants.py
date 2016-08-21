@@ -33,6 +33,17 @@ class MessageTypes(object):
 """
     [MS-NLMP] v28.0 2016-07-14
 
+    2.2.2.1 AV_PAIR (MsvAvFlags)
+    A 32-bit value indicated server or client configuration
+"""
+class AvFlags(object):
+    AUTHENTICATION_CONSTRAINED  = 0x1
+    MIC_PROVIDED                = 0x2
+    UNTRUSTED_SPN_SOURCE        = 0x4
+
+"""
+    [MS-NLMP] v28.0 2016-07-14
+
     2.2.2.5 NEGOTIATE
     During NTLM authentication, each of the following flags is a possible value of the
     NegotiateFlags field of the NEGOTIATE_MESSAGE, CHALLENGE_MESSAGE and AUTHENTICATE_MESSAGE,
@@ -63,7 +74,7 @@ class NegotiateFlags(object):
     NTLMSSP_ANOYNMOUS                               = 0x00000800
     NTLMSSP_RESERVED_R8                             = 0x00000400
     NTLMSSP_NEGOTIATE_NTLM                          = 0x00000200
-    NTLMSSP_RESERVED_R9                             = 0x00000090
+    NTLMSSP_RESERVED_R9                             = 0x00000100
     NTLMSSP_NEGOTIATE_LM_KEY                        = 0x00000080
     NTLMSSP_NEGOTIATE_DATAGRAM                      = 0x00000040
     NTLMSSP_NEGOTIATE_SEAL                          = 0x00000020
@@ -72,3 +83,10 @@ class NegotiateFlags(object):
     NTLMSSP_REQUEST_TARGET                          = 0x00000004
     NTLMSSP_NEGOTIATE_OEM                           = 0x00000002
     NTLMSSP_NEGOTIATE_UNICODE                       = 0x00000001
+
+class SignSealConstants(object):
+    # Magic Contants used to get the signing and sealing key for Extended Session Security
+    CLIENT_SIGNING = b"session key to client-to-server signing key magic constant\0"
+    SERVER_SIGNING = b"session key to server-to-client signing key magic constant\0"
+    CLIENT_SEALING = b"session key to client-to-server sealing key magic constant\0"
+    SERVER_SEALING = b"session key to server-to-client sealing key magic constant\0"
