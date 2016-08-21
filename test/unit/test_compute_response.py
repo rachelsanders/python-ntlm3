@@ -1,9 +1,10 @@
 import mock
+import time
 import unittest2 as unittest # for compatiblity with older version of python
 
 from ntlm3.messages import ChallengeMessage
 from ntlm3.target_info import TargetInfo
-from ntlm3.compute_response import ComputeResponse
+from ntlm3.compute_response import ComputeResponse, get_windows_timestamp
 from ntlm3.constants import AvFlags
 from ..expected_values import *
 from ..mock_functions import mock_random, mock_timestamp
@@ -29,6 +30,15 @@ ntlmv2_challenge_message = ChallengeMessage(ntlmv2_challenge_message)
 
     For tests that follow Microsoft examples, the examples are stored in expected_values.py
 """
+class Test_Generic(unittest.TestCase):
+    def test_get_timestamp_format(self):
+        actual1 = struct.unpack("<q", get_windows_timestamp())[0]
+        time.sleep(1)
+        actual2 = struct.unpack("<q", get_windows_timestamp())[0]
+
+        assert isinstance(actual1, long)
+        assert actual2 > actual1
+
 class Test_HashResults(unittest.TestCase):
     # 4.2.2.2.2 - LMv1 Response
     def test_get_LMv1_response(self):

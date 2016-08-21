@@ -2,11 +2,22 @@ import mock
 import unittest2 as unittest # for compatiblity with older version of python
 
 from ntlm3.constants import NegotiateFlags, MessageTypes, NTLM_SIGNATURE
-from ntlm3.messages import NegotiateMessage, ChallengeMessage, AuthenticateMessage
+from ntlm3.messages import NegotiateMessage, ChallengeMessage, AuthenticateMessage, get_random_export_session_key
 from ntlm3.target_info import TargetInfo
 from ..expected_values import *
 from ..mock_functions import mock_random, mock_random_session_key, mock_timestamp, mock_version
 from ..utils import HexToByte
+
+class Test_Generic(unittest.TestCase):
+    def test_random_session_key(self):
+        expected_length = 16
+
+        actual1 = get_random_export_session_key()
+        actual2 = get_random_export_session_key()
+        actual_length = len(actual1)
+
+        assert actual_length == expected_length
+        assert actual1 != actual2
 
 class Test_Negotiate(unittest.TestCase):
     def test_negotiate_with_all(self):
