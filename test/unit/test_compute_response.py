@@ -36,7 +36,6 @@ class Test_Generic(unittest.TestCase):
         time.sleep(1)
         actual2 = struct.unpack("<q", get_windows_timestamp())[0]
 
-        assert isinstance(actual1, long)
         assert actual2 > actual1
 
 class Test_HashResults(unittest.TestCase):
