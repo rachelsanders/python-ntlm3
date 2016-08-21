@@ -40,7 +40,7 @@ class ARC4(object):
                 byte = char
             updated_byte = byte ^ next(random_gen)
             chars.append(updated_byte)
-        return bytearray(chars)
+        return bytes(bytearray(chars))
 
     def _random_generator(self):
         #Pseudo-Random Generation Algorithm (PRGA)
