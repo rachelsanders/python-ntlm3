@@ -20,9 +20,6 @@ from ntlm3.constants import NegotiateFlags, MessageTypes, NTLM_SIGNATURE, AvFlag
 from ntlm3.rc4 import ARC4
 from ntlm3.target_info import TargetInfo
 
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms
-
 class NegotiateMessage(object):
     EXPECTED_BODY_LENGTH = 40
 
@@ -252,10 +249,6 @@ class AuthenticateMessage(object):
             self.exported_session_key = get_random_export_session_key()
 
             rc4_handle = ARC4(key_exchange_key)
-            #rc4_handle = Cipher(algorithms.ARC4(key_exchange_key), mode=None, backend=default_backend()).encryptor()
-
-            #before = rc4_handle1.update(self.exported_session_key)
-            #after = rc4_handle.update(self.exported_session_key)
             self.encrypted_random_session_key = rc4_handle.update(self.exported_session_key)
         else:
             self.exported_session_key = key_exchange_key
