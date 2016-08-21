@@ -110,7 +110,7 @@ class Test_SessionSecurity(unittest.TestCase):
         with self.assertRaises(Exception) as context:
             test_session_security.unwrap(test_message, test_signature)
 
-        self.assertTrue('The signature sequence number does not mathc up, message not received in the correct sequence' in context.exception.args)
+        self.assertTrue('The signature sequence number does not match up, message not received in the correct sequence' in context.exception.args)
 
     def test_sign_no_seal_message(self):
         test_flags = ntlmv2_negotiate_flags - NegotiateFlags.NTLMSSP_NEGOTIATE_SEAL

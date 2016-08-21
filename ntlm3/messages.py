@@ -15,13 +15,10 @@ import hmac
 import os
 import struct
 
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms
-from ntlm3.target_info import TargetInfo
-
 from ntlm3.compute_response import ComputeResponse
 from ntlm3.constants import NegotiateFlags, MessageTypes, NTLM_SIGNATURE, AvFlags
-
+from ntlm3.rc4 import ARC4
+from ntlm3.target_info import TargetInfo
 
 class NegotiateMessage(object):
     EXPECTED_BODY_LENGTH = 40
@@ -90,7 +87,8 @@ class NegotiateMessage(object):
         payload_offset += len(self.workstation)
 
         # Payload - variable length
-        payload = self.domain_name + self.workstation
+        payload = self.domain_name
+        payload += self.workstation
 
         # Bring the header values together into 1 message
         msg1 = self.signature
@@ -250,8 +248,8 @@ class AuthenticateMessage(object):
         if self.negotiate_flags & NegotiateFlags.NTLMSSP_NEGOTIATE_KEY_EXCH:
             self.exported_session_key = get_random_export_session_key()
 
-            rc4_cipher = Cipher(algorithms.ARC4(key_exchange_key), None, default_backend()).encryptor()
-            self.encrypted_random_session_key = rc4_cipher.update(self.exported_session_key)
+            rc4_handle = ARC4(key_exchange_key)
+            self.encrypted_random_session_key = rc4_handle.update(self.exported_session_key)
         else:
             self.exported_session_key = key_exchange_key
             self.encrypted_random_session_key = b''

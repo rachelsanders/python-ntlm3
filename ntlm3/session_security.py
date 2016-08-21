@@ -17,9 +17,7 @@ import struct
 
 import ntlm3.compute_keys as compkeys
 from ntlm3.constants import NegotiateFlags, SignSealConstants
-
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms
+from ntlm3.rc4 import ARC4
 
 class _NtlmMessageSignature1(object):
     EXPECTED_BODY_LENGTH = 16
@@ -102,13 +100,13 @@ class SessionSecurity(object):
         if source == "client":
             self.outgoing_signing_key = compkeys.get_sign_key(exported_session_key, SignSealConstants.CLIENT_SIGNING)
             self.incoming_signing_key = compkeys.get_sign_key(exported_session_key, SignSealConstants.SERVER_SIGNING)
-            self.outgoing_handle = Cipher(algorithms.ARC4(client_sealing_key), None, default_backend()).encryptor()
-            self.incoming_handle = Cipher(algorithms.ARC4(server_sealing_key), None, default_backend()).decryptor()
+            self.outgoing_handle = ARC4(client_sealing_key)
+            self.incoming_handle = ARC4(server_sealing_key)
         elif source == "server":
             self.outgoing_signing_key = compkeys.get_sign_key(exported_session_key, SignSealConstants.SERVER_SIGNING)
             self.incoming_signing_key = compkeys.get_sign_key(exported_session_key, SignSealConstants.CLIENT_SIGNING)
-            self.outgoing_handle = Cipher(algorithms.ARC4(server_sealing_key), None, default_backend()).encryptor()
-            self.incoming_handle = Cipher(algorithms.ARC4(client_sealing_key), None, default_backend()).decryptor()
+            self.outgoing_handle = ARC4(server_sealing_key)
+            self.incoming_handle = ARC4(client_sealing_key)
         else:
             raise Exception("Invalid source parameter %s, must be client or server" % source)
 
@@ -223,7 +221,7 @@ class SessionSecurity(object):
             raise Exception("The signature checksum does not match, message has been altered")
 
         if actual_seq_num != expected_seq_num:
-            raise Exception("The signature sequence number does not mathc up, message not received in the correct sequence")
+            raise Exception("The signature sequence number does not match up, message not received in the correct sequence")
 
         self.incoming_seq_num += 1
 

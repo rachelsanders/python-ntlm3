@@ -14,8 +14,8 @@
 import binascii
 import hashlib
 import hmac
-import ntlm3.des as des
 
+from ntlm3 import des
 from ntlm3.constants import NegotiateFlags
 
 def _get_exchange_key_ntlm_v1(negotiate_flags, session_base_key, server_challenge, lm_challenge_response, lm_hash):

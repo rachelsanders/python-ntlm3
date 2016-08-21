@@ -15,7 +15,8 @@ import binascii
 import hashlib
 import hmac
 import re
-import ntlm3.des as des
+
+from ntlm3 import des
 
 def _lmowfv1(password):
     """
