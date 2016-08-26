@@ -81,5 +81,8 @@ artifacts:
 matrix:
   fast_finish: true
 
+services:
+  - iis
+
 #on_success:
 #  - TODO: upload the content of dist/*.whl to a public wheelhouse

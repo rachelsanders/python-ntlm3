@@ -8,7 +8,6 @@ function SetupUser() {
     $password = 'Password01'
     $desc = 'Automatically created local admin account'
 
-
     $computer = [ADSI]"WinNT://$computername,computer"
     $user = $computer.Create("user", $username)
     $user.SetPassword($password)
