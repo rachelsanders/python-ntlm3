@@ -15,7 +15,8 @@ install:
 
 # command to run tests
 script:
-  - py.test --cov ntlm3 --cov-report term-missing test
+  # Ignoring test_iis.py as it requires a windows host, this is run in appveyor instead
+  - py.test --cov ntlm3 --cov-report term-missing test --ignore test/integration/test_iis.py
 
 after_success:
   - coveralls

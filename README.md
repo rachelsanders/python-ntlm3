@@ -19,7 +19,7 @@ Features
 * Set the The NTLM Compatibility level when sending messages
 * Channel Binding Tokens support, need to pass in the SHA256 hash of the certificate for it to work
 * Support for MIC to enhance the integrity of the messages
-* (To be Tested) Support for session security with signing and sealing messages after authentication happens
+* Support for session security with signing and sealing of message contents
 
 Installation
 ------------
@@ -114,7 +114,11 @@ authenticate_message = ntlm_context.create_authenticate_message(user_name, passw
 
 #### Signing/Sealing
 
-All version of NTLM supports signing (integrity) and sealing (confidentiality) of message content. This function can add these improvements to a message that is sent and received from the server. While it does encrypt the data if supported by the server it is only done with RC4 with a 128-bit key which is not very secure and on older systems this key length could be 56 or 40 bit. This functionality while tested and conforms with the Microsoft documentation has yet to be fully tested in an integrated environment. Once again this has not been thoroughly tested and has only passed unit tests and their expections.
+All version of NTLM supports signing (integrity) and sealing (confidentiality) of message content. This function can add these improvements to a message that is sent and received from the server. While it does encrypt the data if supported by the server it is only done with RC4 with a 128-bit key which is not very secure and on older systems this key length could be 56 or 40 bit.
+
+The methods in session_security are similar to the GSS_WrapEx() and GSS_UnwrapEx() where it will take in the message body that is sent to the server and wrap (encrypt) and return both the encrypted value and the signature. Unwrap does the inverse where it verifies the signature and unwraps (decrypt) the data and return the plaintext value.
+
+The format of the message is dependent on the protocol that you are using and is not part of python-ntlm3's scope.
 
 ```python
 import socket
@@ -164,7 +168,6 @@ Please use the Ntlm class in ntlm.py in the future as this brings supports for N
 Backlog
 -------
 * Remove the old ntlm.py code that has been left there for compatibility in the next major version release. This does not support NTLMv2 auth
-* Fully test out signing and sealing of messages over the wire with another library
 * Automatically get windows version if running on windows, use default if not that case
 * Add param when initialising the ntlm context to throw an exception and cancel auth if the server doesn't support 128-bit keys for sealing
 * Add param when initialising the ntlm context to not send the MIC structure for older servers

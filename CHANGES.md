@@ -27,10 +27,11 @@ Initial public offering.
 * Moved code to separate classes to help cleanup the code
 * Added support for channel_bindings (CBT) when supplying a certificate hash
 * Added support for MIC data for authenticate messages
-* Preliminary support for signing and sealing of messages. Needs to be done outside of auth messages and tested more thoroughly
+* Added support for signing and sealing of messages. Actual message structure is done outside of python-ntlm3 in the app level but this can still encrypt whatever message is sent through.
 * Removed some methods that weren't being used at all (most were starting to implement these features above but weren't there)
 * More comments on each methods relating back to the MS-NLMP document pack on NTLM authentication for easier maintenance
 * Created target_info.py to handle AV_PAIRS and putting it in the target info
 * Renaming of some variables to match more closely with the Microsoft documentation, makes it easier to understand what is happening
 * Rewriting of tests to accommodate these new changes and to cover the new cases
+* Added better itegration test in Appveyor to test a connection to a local IIS server configured to only allow NTLM authentication
 * The methods `create_NTLM_NEGOTIATE_MESSAGE`, `parse_NTLM_CHALLENGE_MESSAGE`, `create_NTLM_AUTHENTICATE_MESSAGE` will no longer be supported in future version. They do not support NTLMv2 auth and are only left for compatibility
