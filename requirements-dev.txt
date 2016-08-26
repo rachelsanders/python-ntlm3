@@ -4,5 +4,6 @@ httpretty
 flake8
 mock
 wheel
+requests
 six
 unittest2
