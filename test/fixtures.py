@@ -1,5 +1,7 @@
 from .utils import HexToByte
 
+# TODO: Migrate away from this page and move to expected_values.py
+
 ServerChallenge = HexToByte("01 23 45 67 89 ab cd ef")
 ClientChallenge = b'\xaa' * 8
 Time = b'\x00' * 8

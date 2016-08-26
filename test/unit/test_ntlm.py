@@ -1,82 +1,207 @@
-import unittest
-import pytest
+import unittest2 as unittest
+import mock
+import base64
 
-from ntlm3.ntlm import create_LM_hashed_password_v1, create_NT_hashed_password_v1, \
-    create_sessionbasekey, calc_resp, ntlm2sr_calc_resp, create_NT_hashed_password_v2, \
-    create_NTLM_NEGOTIATE_MESSAGE, ComputeResponse, create_NTLM_AUTHENTICATE_MESSAGE
+from ntlm3.ntlm import Ntlm
+from ntlm3.target_info import TargetInfo
+from ntlm3.constants import NegotiateFlags, MessageTypes, NTLM_SIGNATURE
 
+from ..expected_values import *
+from ..mock_functions import mock_random, mock_random_session_key, mock_timestamp, mock_version
+from ..utils import HexToByte
 
-from ..fixtures import *  # noqa
-from ..utils import HexToByte, ByteToHex
+default_negotiate_flags = NegotiateFlags.NTLMSSP_NEGOTIATE_TARGET_INFO | \
+                          NegotiateFlags.NTLMSSP_NEGOTIATE_128 | \
+                          NegotiateFlags.NTLMSSP_NEGOTIATE_56 | \
+                          NegotiateFlags.NTLMSSP_NEGOTIATE_UNICODE | \
+                          NegotiateFlags.NTLMSSP_NEGOTIATE_VERSION | \
+                          NegotiateFlags.NTLMSSP_NEGOTIATE_KEY_EXCH | \
+                          NegotiateFlags.NTLMSSP_NEGOTIATE_ALWAYS_SIGN | \
+                          NegotiateFlags.NTLMSSP_NEGOTIATE_SIGN | \
+                          NegotiateFlags.NTLMSSP_NEGOTIATE_SEAL
+default_ntlm_compatibility = 3
 
+class Test_InitialiseNtlm(unittest.TestCase):
+    def test_initialise_defaults(self):
+        ntlm_context = Ntlm()
+        expected_flags = default_negotiate_flags | NegotiateFlags.NTLMSSP_NEGOTIATE_EXTENDED_SESSIONSECURITY
+        expected_ntlm_compatibility = default_ntlm_compatibility
 
-class Test_HashingPasswords(unittest.TestCase):
+        actual_flags = ntlm_context.negotiate_flags
+        actual_ntlm_compatibility = ntlm_context.ntlm_compatibility
 
-    def test_LM_hashed_password(self):
-        # [MS-NLMP] page 72
-        assert HexToByte("e5 2c ac 67 41 9a 9a 22 4a 3b 10 8f 3f a6 cb 6d") == create_LM_hashed_password_v1(Password)
+        assert actual_flags == expected_flags
+        assert actual_ntlm_compatibility == expected_ntlm_compatibility
 
-    def test_NT_hashed_password(self):
-        # [MS-NLMP] page 73
-        assert HexToByte("a4 f4 9c 40 65 10 bd ca b6 82 4e e7 c3 0f d8 52") == create_NT_hashed_password_v1(Password)
+    def test_initialise_with_ntlm0(self):
+        ntlm_context = Ntlm(ntlm_compatibility=0)
+        expected_flags = default_negotiate_flags | \
+                         NegotiateFlags.NTLMSSP_NEGOTIATE_NTLM | \
+                         NegotiateFlags.NTLMSSP_NEGOTIATE_LM_KEY
+        expected_ntlm_compatibility = 0
 
-    def test_create_session_base_key(self):
-        assert HexToByte("d8 72 62 b0 cd e4 b1 cb 74 99 be cc cd f1 07 84") == create_sessionbasekey(Password)
+        actual_flags = ntlm_context.negotiate_flags
+        actual_ntlm_compatibility = ntlm_context.ntlm_compatibility
 
-    def test_NT_hashed_password_v2(self):
-        # [MS-NLMP] page 76
-        assert HexToByte("0c 86 8a 40 3b fd 7a 93 a3 00 1e f2 2e f0 2e 3f") == create_NT_hashed_password_v2(Password, User, Domain)
+        assert actual_flags == expected_flags
+        assert actual_ntlm_compatibility == expected_ntlm_compatibility
 
+    def test_initialise_with_ntlm1(self):
+        ntlm_context = Ntlm(ntlm_compatibility=1)
+        expected_flags = default_negotiate_flags | \
+                         NegotiateFlags.NTLMSSP_NEGOTIATE_NTLM | \
+                         NegotiateFlags.NTLMSSP_NEGOTIATE_EXTENDED_SESSIONSECURITY
+        expected_ntlm_compatibility = 1
 
+        actual_flags = ntlm_context.negotiate_flags
+        actual_ntlm_compatibility = ntlm_context.ntlm_compatibility
 
+        assert actual_flags == expected_flags
+        assert actual_ntlm_compatibility == expected_ntlm_compatibility
 
-class Test_HashedPasswordResponse(unittest.TestCase):
+    def test_initialise_with_ntlm2(self):
+        ntlm_context = Ntlm(ntlm_compatibility=2)
+        expected_flags = default_negotiate_flags | NegotiateFlags.NTLMSSP_NEGOTIATE_EXTENDED_SESSIONSECURITY
+        expected_ntlm_compatibility = 2
 
-    def test_response_to_LM_hashed_password(self):
-        assert HexToByte("98 de f7 b8 7f 88 aa 5d af e2 df 77 96 88 a1 72 de f1 1c 7d 5c cd ef 13") == \
-            calc_resp(create_LM_hashed_password_v1(Password), ServerChallenge)
+        actual_flags = ntlm_context.negotiate_flags
+        actual_ntlm_compatibility = ntlm_context.ntlm_compatibility
 
-    def test_response_to_NT_hashed_password(self):
-        assert HexToByte("67 c4 30 11 f3 02 98 a2 ad 35 ec e6 4f 16 33 1c 44 bd be d9 27 84 1f 94") == \
-            calc_resp(create_NT_hashed_password_v1(Password), ServerChallenge)
+        assert actual_flags == expected_flags
+        assert actual_ntlm_compatibility == expected_ntlm_compatibility
 
-    def test_response_to_NTLM_v1(self):
-        # [MS-NLMP] page 75
-        (NTLMv1Response, LMv1Response) = ntlm2sr_calc_resp(create_NT_hashed_password_v1(Password), ServerChallenge, ClientChallenge)
-        assert HexToByte("aa aa aa aa aa aa aa aa 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00") == LMv1Response
-        assert HexToByte("75 37 f8 03 ae 36 71 28 ca 45 82 04 bd e7 ca f8 1e 97 ed 26 83 26 72 32") == NTLMv1Response
+    def test_initialise_with_ntlm3(self):
+        ntlm_context = Ntlm(ntlm_compatibility=3)
+        expected_flags = default_negotiate_flags | NegotiateFlags.NTLMSSP_NEGOTIATE_EXTENDED_SESSIONSECURITY
+        expected_ntlm_compatibility = 3
 
-    def test_ntlm2sr_calc_resp(self):
-        password_hash = HexToByte("8f 46 35 4d 0c ba 32 9b ea e1 35 67 04 05 21 72")
-        nonce = HexToByte("71 67 c3 cb 8f ad f0 81")
-        client_challenge = HexToByte("03 a5 30 b1 4f df 3a 5c")
+        actual_flags = ntlm_context.negotiate_flags
+        actual_ntlm_compatibility = ntlm_context.ntlm_compatibility
 
-        expected_NtChallengeResponse = HexToByte("75 1a 9e 98 51 f0 44 53 64 c6 8e 30 6a 1e 4f 0d 0d 43 f1 1c 24 4c 40 86")
-        expected_LMChallengeResponse = HexToByte("03 a5 30 b1 4f df 3a 5c 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+        assert actual_flags == expected_flags
+        assert actual_ntlm_compatibility == expected_ntlm_compatibility
 
-        (NTLMv1Response, LMv1Response) = ntlm2sr_calc_resp(password_hash, nonce, client_challenge)
+    def test_initialise_with_ntlm4(self):
+        ntlm_context = Ntlm(ntlm_compatibility=4)
+        expected_flags = default_negotiate_flags | NegotiateFlags.NTLMSSP_NEGOTIATE_EXTENDED_SESSIONSECURITY
+        expected_ntlm_compatibility = 4
 
-        assert NTLMv1Response == expected_NtChallengeResponse
-        assert LMv1Response == expected_LMChallengeResponse
+        actual_flags = ntlm_context.negotiate_flags
+        actual_ntlm_compatibility = ntlm_context.ntlm_compatibility
 
-    def test_response_to_NTLM_v2(self):
-        # [MS-NLMP] page 76
-        ResponseKeyLM = ResponseKeyNT = create_NT_hashed_password_v2(Password, User, Domain)
-        (NTLMv2Response, LMv2Response) = ComputeResponse(ResponseKeyNT, ResponseKeyLM, ServerChallenge, ServerName, ClientChallenge, Time)
-        assert HexToByte("86 c3 50 97 ac 9c ec 10 25 54 76 4a 57 cc cc 19 aa aa aa aa aa aa aa aa") == LMv2Response
+        assert actual_flags == expected_flags
+        assert actual_ntlm_compatibility == expected_ntlm_compatibility
 
-    @pytest.mark.skipif(True, reason="This test is failing, not sure why")
-    def test_ntlm_negotiate_message(self):
-        assert "TlRMTVNTUAABAAAAB7IIogYABgAwAAAACAAIACgAAAAFASgKAAAAD1dTMDQyMzc4RE9NQUlO" == create_NTLM_NEGOTIATE_MESSAGE(FULL_DOMAIN)
+    def test_initialise_with_ntlm5(self):
+        ntlm_context = Ntlm(ntlm_compatibility=5)
+        expected_flags = default_negotiate_flags | NegotiateFlags.NTLMSSP_NEGOTIATE_EXTENDED_SESSIONSECURITY
+        expected_ntlm_compatibility = 5
 
-    @pytest.mark.skipif(True, reason="This test is failing, not sure why")
-    def test_expected_failure(self):
-        ResponseKeyLM = ResponseKeyNT = create_NT_hashed_password_v2(Password, User, Domain)
-        (NTLMv2Response, LMv2Response) = ComputeResponse(ResponseKeyNT, ResponseKeyLM, ServerChallenge, ServerName, ClientChallenge, Time)
+        actual_flags = ntlm_context.negotiate_flags
+        actual_ntlm_compatibility = ntlm_context.ntlm_compatibility
 
-        # expected failure
-        # According to the spec in section '3.3.2 NTLM v2 Authentication' the NTLMv2Response
-        # should be longer than the value given on page 77 (this suggests a mistake in the spec)
-        # [MS-NLMP] page 77
-        assert HexToByte("68 cd 0a b8 51 e5 1c 96 aa bc 92 7b eb ef 6a 1c") == \
-            NTLMv2Response, "\nExpected: 68 cd 0a b8 51 e5 1c 96 aa bc 92 7b eb ef 6a 1c\nActual:   %s" % ByteToHex(NTLMv2Response)
+        assert actual_flags == expected_flags
+        assert actual_ntlm_compatibility == expected_ntlm_compatibility
+
+    def test_initialise_with_illegal_ntlm_compatibility_high(self):
+        with self.assertRaises(Exception) as context:
+            Ntlm(ntlm_compatibility=6)
+
+        self.assertTrue('Unknown ntlm_compatibility level - expecting value between 0 and 5' in context.exception.args)
+
+    def test_initialise_with_illegal_ntlm_compatibility_low(self):
+        with self.assertRaises(Exception) as context:
+            Ntlm(ntlm_compatibility=-1)
+
+        self.assertTrue('Unknown ntlm_compatibility level - expecting value between 0 and 5' in context.exception.args)
+
+class Test_Messages(object):
+    # Contains only lightweight tests, the actual message tests and its permutations are in test_message.py
+    def test_create_negotiate_message(self):
+        test_ntlm_context = Ntlm()
+
+        expected = 'TlRMTVNTUAABAAAAMrCI4gYABgAoAAAAEAAQAC4AAAAGAbEdAAAAD0RvbWFpbkMATwBNAFAAVQBUAEUAUgA='
+
+        actual = test_ntlm_context.create_negotiate_message(domain_name, workstation_name).decode()
+
+        assert actual == expected
+
+    def test_parse_challenge_message(self):
+        test_target_info = TargetInfo()
+        test_target_info[TargetInfo.MSV_AV_NB_DOMAIN_NAME] = ntlmv2_netbios_domain_name
+        test_target_info[TargetInfo.MSV_AV_NB_COMPUTER_NAME] = ntlmv2_netbios_server_name
+        test_challenge_string = base64.b64encode(ntlmv2_challenge_message)
+        test_ntlm_context = Ntlm()
+        test_ntlm_context.parse_challenge_message(test_challenge_string)
+
+        expected_message_type = MessageTypes.NTLM_CHALLENGE
+        expected_negotiate_flags = ntlmv2_negotiate_flags
+        expected_server_challenge = server_challenge
+        expected_signature = NTLM_SIGNATURE
+        expected_target_info = test_target_info.get_data()
+        expected_target_name = None
+        expected_version = struct.unpack("<q", HexToByte('06 00 70 17 00 00 00 0f'))[0]
+
+        actual = test_ntlm_context.challenge_message
+
+        actual_message_type = actual.message_type
+        actual_negotiate_flags = actual.negotiate_flags
+        actual_server_challenge = actual.server_challenge
+        actual_signature = actual.signature
+        actual_target_info = actual.target_info.get_data()
+        actual_target_name = actual.target_name
+        actual_version = actual.version
+
+        assert actual_message_type == expected_message_type
+        assert actual_negotiate_flags == expected_negotiate_flags
+        assert actual_server_challenge == expected_server_challenge
+        assert actual_signature == expected_signature
+        assert actual_target_info == expected_target_info
+        assert actual_target_name == expected_target_name
+        assert actual_version == expected_version
+
+    @mock.patch('os.urandom', side_effect=mock_random)
+    @mock.patch('ntlm3.messages.get_version', side_effect=mock_version)
+    @mock.patch("ntlm3.messages.get_random_export_session_key", side_effect=mock_random_session_key)
+    @mock.patch('ntlm3.compute_response.get_windows_timestamp', side_effect=mock_timestamp)
+    def test_create_authenticate_message(self, random_function, version_function, session_key_function, timestamp_function):
+        test_challenge_string = base64.b64encode(ntlmv2_challenge_message)
+        test_ntlm_context = Ntlm()
+        test_ntlm_context.create_negotiate_message(domain_name, workstation_name)
+        test_ntlm_context.parse_challenge_message(test_challenge_string)
+        # Need to override the flags in the challenge message to match the expectation, these flags are inconsequential and are done manualy for sanity
+        test_ntlm_context.challenge_message.negotiate_flags -= NegotiateFlags.NTLMSSP_TARGET_TYPE_SERVER
+        test_ntlm_context.challenge_message.negotiate_flags |= NegotiateFlags.NTLMSSP_REQUEST_TARGET
+
+        expected_message = base64.b64encode(ntlmv2_authenticate_message).decode()
+
+        actual_message = test_ntlm_context.create_authenticate_message(user_name, password, domain_name, "COMPUTER").decode()
+        actual_session_security = test_ntlm_context.session_security
+
+        assert actual_message == expected_message
+        assert actual_session_security is not None
+
+    @mock.patch('os.urandom', side_effect=mock_random)
+    @mock.patch('ntlm3.messages.get_version', side_effect=mock_version)
+    @mock.patch("ntlm3.messages.get_random_export_session_key", side_effect=mock_random_session_key)
+    @mock.patch('ntlm3.compute_response.get_windows_timestamp', side_effect=mock_timestamp)
+    def test_create_authenticate_message_without_security(self, random_function, version_function, session_key_function, timestamp_function):
+        test_challenge_string = base64.b64encode(ntlmv2_challenge_message)
+        test_ntlm_context = Ntlm()
+        test_ntlm_context.create_negotiate_message(domain_name, workstation_name)
+        test_ntlm_context.parse_challenge_message(test_challenge_string)
+        # Need to override the sign and seal flags so they don't return a security context
+        test_ntlm_context.negotiate_flags -= NegotiateFlags.NTLMSSP_NEGOTIATE_SIGN
+        test_ntlm_context.negotiate_flags -= NegotiateFlags.NTLMSSP_NEGOTIATE_SEAL
+
+        # Need to override the flags in the challenge message to match the expectation, these flags are inconsequential and are done manualy for sanity
+        test_ntlm_context.challenge_message.negotiate_flags -= NegotiateFlags.NTLMSSP_TARGET_TYPE_SERVER
+        test_ntlm_context.challenge_message.negotiate_flags |= NegotiateFlags.NTLMSSP_REQUEST_TARGET
+
+        expected_message = base64.b64encode(ntlmv2_authenticate_message).decode()
+
+        actual_message = test_ntlm_context.create_authenticate_message(user_name, password, domain_name, "COMPUTER").decode()
+        actual_session_security = test_ntlm_context.session_security
+
+        assert actual_message == expected_message
+        assert actual_session_security is None

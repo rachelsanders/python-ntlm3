@@ -15,8 +15,8 @@
 # License along with this library.  If not, see <http://www.gnu.org/licenses/> or <http://www.gnu.org/licenses/lgpl.txt>.
 import six
 
-from .U32 import U32
-from .des_data import des_SPtrans, des_skb
+from ntlm3.U32 import U32
+from ntlm3.des_data import des_SPtrans, des_skb
 
 
 def c2l(c):

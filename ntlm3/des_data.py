@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library.  If not, see <http://www.gnu.org/licenses/> or <http://www.gnu.org/licenses/lgpl.txt>.
 
-from .U32 import U32
+from ntlm3.U32 import U32
 
 # static unsigned long des_SPtrans[8][64]={
 

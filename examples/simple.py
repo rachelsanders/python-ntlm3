@@ -1,6 +1,8 @@
 #! /usr/bin/env python
 
 """
+This method is deprecated, please avoid using this way as it does not support NTLMv2 and is not considered secure
+
 A simple script to demonstrate how this package works.
 
 Run with:

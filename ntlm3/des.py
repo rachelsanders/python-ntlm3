@@ -13,11 +13,11 @@
 #
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library.  If not, see <http://www.gnu.org/licenses/> or <http://www.gnu.org/licenses/lgpl.txt>.
-import six
 import logging
 
-from . import des_c
+import six
 
+from ntlm3 import des_c
 
 log = logging.getLogger(__name__)
 
