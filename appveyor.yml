@@ -66,7 +66,7 @@ build: false  # Not a C# project, build stuff at the test step instead.
 before_test:
   # Sets up 2 IIS sites to use in the integration tests only run on windows.
   # This will actually test out NTLM authentication with a real client and not just documentation exmaples
-  - PowerShell appveyor\setup_iis.py
+  - PowerShell appveyor\setup_iis.ps1
 
 test_script:
   - "%CMD_IN_ENV% py.test test"
