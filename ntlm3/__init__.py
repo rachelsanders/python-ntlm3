@@ -1,5 +1,5 @@
 
-from . import HTTPNtlmAuthHandler  # noqa
+from . import HTTPNtlmAuthHandler, smtp  # noqa
 
 
-__all__ = ('HTTPNtlmAuthHandler')
+__all__ = ('HTTPNtlmAuthHandler', 'smtp')
