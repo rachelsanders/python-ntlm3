@@ -34,3 +34,8 @@ API
 ----------
 
 TODO
+
+
+Examples
+--------
+In the examples folder, there are 2 examples, one for accessing a URL behind NTLM authentication, and one for sending an email through a SMTP server using NTLM authentication. Each file's usage is documented at the top of the file
